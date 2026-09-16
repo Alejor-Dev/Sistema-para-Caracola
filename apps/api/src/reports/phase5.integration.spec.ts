@@ -1,0 +1,15 @@
+import { afterAll,beforeAll,describe,expect,it } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { parseXlsx } from '../common/tabular';
+import { ImportsService } from '../imports/imports.service';
+import { ReportsService } from './reports.service';
+import { AuditService } from '../audit/audit.service';
+
+const run=process.env.RUN_PHASE5_DB_TESTS==='1';
+describe.skipIf(!run)('Fase 5 con PostgreSQL real',()=>{
+ const prisma=new PrismaClient();const imports=new ImportsService(prisma as never);const reports=new ReportsService(prisma as never);const audit=new AuditService(prisma as never);let userId='';const suffix=`${Date.now()}-${Math.random().toString(36).slice(2,7)}`;const permissions=['reports.read','exports.create','imports.create','audit.read','costs.read','profits.read'];const context=()=>({actor:{id:userId,username:'phase5-test',displayName:'Prueba Fase 5',permissions,sessionId:'test'},requestId:suffix});
+ beforeAll(async()=>{userId=(await prisma.user.findFirstOrThrow({select:{id:true}})).id;});afterAll(async()=>prisma.$disconnect());
+ it('previsualiza y confirma una importación sin insertar antes de confirmar',async()=>{const sku=`P5-${suffix}`.toUpperCase();const csv=Buffer.from(`nombre;sku;categoria;color;talle;stock;stock_minimo;costo;precio\nProducto Fase 5;${sku};Pruebas;Azul;M;7;2;1200.00;2100.00`);const file={originalname:'fase5.csv',size:csv.length,buffer:csv} as Express.Multer.File;const preview=await imports.preview(file,context());expect(preview.errorRows).toBe(0);expect(await prisma.productVariant.count({where:{sku}})).toBe(0);const confirmed=await imports.confirm(preview.id,context());expect(confirmed.createdVariants).toBe(1);expect((await prisma.productVariant.findUniqueOrThrow({where:{sku},include:{inventory:true}})).inventory?.quantity).toBe(7);});
+ it('detecta duplicados y bloquea su confirmación',async()=>{const csv=Buffer.from(`nombre;sku;costo;precio\nDuplicado;P5-${suffix};10;20`);const file={originalname:'duplicado.csv',size:csv.length,buffer:csv} as Express.Multer.File;const preview=await imports.preview(file,context());expect(preview.errorRows).toBe(1);expect(preview.canConfirm).toBe(false);await expect(imports.confirm(preview.id,context())).rejects.toThrow('Corrija todas las filas');});
+ it('calcula el dashboard, exporta tres formatos y audita la descarga',async()=>{const dashboard=await reports.dashboard(context().actor);expect(dashboard.inventory.products).toBeGreaterThan(0);expect(dashboard.trend).toHaveLength(7);for(const format of ['csv','xlsx','pdf'] as const){const exported=await reports.export({dataset:'stock',format,limit:20},context());expect(exported.rows).toBeGreaterThan(0);expect(exported.buffer.length).toBeGreaterThan(100);if(format==='xlsx')expect(parseXlsx(exported.buffer)[0]).toContain('Nombre');if(format==='pdf')expect(exported.buffer.subarray(0,8).toString()).toBe('%PDF-1.4');}const events=await audit.list({page:1,pageSize:100,search:'report.exported'});expect(events.data.some((event)=>event.action==='report.exported')).toBe(true);});
+});

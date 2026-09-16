@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+coverage/
+.turbo/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+apps/api/generated/
+data/
+logs/
+.bridge-restart-request
+.bridge-restart-ack
+.local/

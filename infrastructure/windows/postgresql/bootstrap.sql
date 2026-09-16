@@ -1,0 +1,15 @@
+\set ON_ERROR_STOP on
+
+SELECT format(
+  'CREATE ROLE crm_app LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION',
+  '__CRM_APP_PASSWORD__'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app')
+\gexec
+
+SELECT 'CREATE DATABASE crm_localderopa OWNER crm_app ENCODING ''UTF8'' TEMPLATE template0'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'crm_localderopa')
+\gexec
+
+REVOKE ALL ON DATABASE crm_localderopa FROM PUBLIC;
+GRANT CONNECT, TEMPORARY ON DATABASE crm_localderopa TO crm_app;

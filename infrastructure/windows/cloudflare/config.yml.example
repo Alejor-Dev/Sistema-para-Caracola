@@ -1,0 +1,14 @@
+tunnel: REEMPLAZAR_TUNNEL_UUID
+credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\REEMPLAZAR_TUNNEL_UUID.json
+
+loglevel: info
+logfile: C:\ProgramData\CRM-LocalDeRopa\logs\cloudflared.log
+metrics: 127.0.0.1:20241
+
+ingress:
+  - hostname: crm.ejemplo.com
+    service: http://127.0.0.1:3000
+    originRequest:
+      connectTimeout: 10s
+      keepAliveTimeout: 90s
+  - service: http_status:404

@@ -1,0 +1,29 @@
+{
+  "name": "crm-localderopa",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@11.10.1",
+  "engines": {
+    "node": ">=22.12.0 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:coverage": "turbo test:coverage",
+    "db:generate": "npm run db:generate --workspace=@crm/api",
+    "db:validate": "npm run db:validate --workspace=@crm/api",
+    "db:migrate": "npm run db:migrate --workspace=@crm/api",
+    "db:deploy": "npm run db:deploy --workspace=@crm/api",
+    "db:seed": "npm run db:seed --workspace=@crm/api"
+  },
+  "devDependencies": {
+    "turbo": "2.10.13",
+    "typescript": "5.9.2"
+  }
+}

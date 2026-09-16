@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 2,
+  "pending": [
+    {
+      "message": {
+        "id": "incident:docs-incidents.md",
+        "kind": "related-incident",
+        "severity": "info",
+        "title": "Incidencias del proyecto",
+        "summary": "- **Estado:** Mitigada; seguimiento pendiente para el instalador de la Fase 7.",
+        "evidence": [
+          {
+            "kind": "incident",
+            "ref": "docs/INCIDENTS.md",
+            "summary": "- **Estado:** Mitigada; seguimiento pendiente para el instalador de la Fase 7.",
+            "canonicalOwner": "C:/Users/Administrator/Documents/Proyectos/CRM-Localderopa",
+            "provenance": "project",
+            "freshness": "fresh",
+            "observedAt": "2026-09-16T14:01:30.599Z",
+            "revision": "81182ee3fe4c2645ffb0ae53835d09397712be61d9d7ffd8dddc59c9360a1701"
+          }
+        ],
+        "advisoryActions": [
+          "record-incident"
+        ],
+        "stages": [],
+        "domains": [],
+        "actions": [],
+        "artifacts": [],
+        "needs": [],
+        "signals": [
+          "error-observed",
+          "warning-observed",
+          "repeated-friction",
+          "recovery-needed"
+        ],
+        "required": false,
+        "priority": 0,
+        "dedupeKey": "incident:c:-users-administrator-documents-proyectos-crm-localderopa:docs-incidents.md",
+        "estimatedChars": 933
+      },
+      "enqueuedAt": "2026-09-16T14:02:06.834Z"
+    }
+  ],
+  "deliveries": [
+    {
+      "messageId": "incident:docs-incidents.md",
+      "messageKind": "related-incident",
+      "selectedCount": 1,
+      "firstSelectedAt": "2026-09-16T14:00:52.492Z",
+      "lastSelectedAt": "2026-09-16T14:00:52.492Z",
+      "expiresAt": "2026-09-23T14:00:52.492Z",
+      "fingerprint": "bc8f42389b779acf2b004287dad398755a8a8fbda4c8b8a1d94ad0c7d5659362",
+      "sources": [
+        {
+          "kind": "incident",
+          "ref": "docs/INCIDENTS.md",
+          "summary": "- **Estado:** Mitigada; seguimiento pendiente para el instalador de la Fase 7.",
+          "canonicalOwner": "C:/Users/Administrator/Documents/Proyectos/CRM-Localderopa",
+          "provenance": "project",
+          "freshness": "fresh",
+          "observedAt": "2026-09-16T11:35:37.250Z",
+          "revision": "d3df5b5a8c7e5915991db5d30113c8f0a6173b459384ecd62e67752e6eec5a2d"
+        }
+      ]
+    }
+  ],
+  "advisoryOnly": true
+}
