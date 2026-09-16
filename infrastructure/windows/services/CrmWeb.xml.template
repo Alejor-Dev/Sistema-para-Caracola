@@ -1,0 +1,17 @@
+<service>
+  <id>CrmWeb</id>
+  <name>CRM Local de Ropa - Web</name>
+  <description>Interfaz web local y PWA del sistema comercial.</description>
+  <executable>%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe</executable>
+  <arguments>-NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;{{SERVICE_ROOT}}\Run-CrmWeb.ps1&quot; -ConfigPath &quot;{{CONFIG_PATH}}&quot;</arguments>
+  <workingdirectory>{{INSTALL_ROOT}}\current</workingdirectory>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <depend>CrmApi</depend>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+  <logpath>{{DATA_ROOT}}\logs</logpath>
+  <log mode="roll-by-size"><sizeThreshold>10240</sizeThreshold><keepFiles>8</keepFiles></log>
+</service>

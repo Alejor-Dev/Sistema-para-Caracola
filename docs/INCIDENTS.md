@@ -71,3 +71,27 @@
 - **Regresión verificada:** `npm ls` resuelve Tauri CLI 2.11.4 y el monorepo completa typecheck y tests.
 - **Seguimiento:** ninguno.
 - **Clasificación:** fricción ambiental resuelta; sin cambio de skill.
+
+## 2026-09-16 — Escritura bloqueada por ACL del sandbox durante la Fase 7
+
+- **Estado:** Mitigada; los metadatos Git fueron restaurados y la fase se completó.
+- **Capa / propietario:** Entorno local de edición en Windows.
+- **Síntoma:** el editor de parches y los comandos normales no podían escribir dentro del workspace aunque la ruta figuraba como autorizada.
+- **Evidencia mínima:** las escrituras fallaron por acceso denegado; el canal de archivos de Bridge escribió y verificó hashes en las mismas rutas. Mover temporalmente `.git` no eliminó la restricción.
+- **Causa demostrada:** no resuelta; la evidencia apunta a la ACL o token del sandbox, no al contenido del repositorio.
+- **Corrección aplicada:** se usó el escritor verificado de Bridge, se preservó `.git` fuera del árbol durante la edición y se restauró antes de cualquier operación Git.
+- **Regresión verificada:** `.git` volvió a su ruta original, `git status` reconoce `main`, y typecheck, pruebas y builds se ejecutaron sobre el workspace final.
+- **Seguimiento:** mantener el fallback de escritura verificada y no modificar ACL del usuario sin diagnóstico externo.
+- **Clasificación:** fricción ambiental con workaround manual; sin cambio de skill.
+
+## 2026-09-16 — El validador PowerShell incluyó archivos no ejecutables
+
+- **Estado:** Resuelta.
+- **Capa / propietario:** Validador de entrega de la Fase 7.
+- **Síntoma:** el análisis sintáctico intentó interpretar YAML, JSON, XML, Markdown y directorios como PowerShell.
+- **Evidencia mínima:** el primer ensayo informó errores de PowerShell en `config.yml.example`, `production.example.json`, `README.md` y plantillas XML válidas.
+- **Causa demostrada:** `Get-ChildItem -Include` no restringió la enumeración recursiva como se esperaba en este entorno.
+- **Corrección aplicada:** la enumeración ahora exige archivos y filtra explícitamente las extensiones `.ps1` y `.psm1`; JSON y XML se validan con sus analizadores propios.
+- **Regresión verificada:** el ensayo de Fase 7 finalizó con código 0 e imprimió el plan de restauración aislada.
+- **Seguimiento:** el mismo script se ejecuta en cada build de Windows en GitHub Actions.
+- **Clasificación:** defecto local corregido; sin cambio de skill.

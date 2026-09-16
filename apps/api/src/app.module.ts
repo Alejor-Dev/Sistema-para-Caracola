@@ -20,6 +20,7 @@ import { ReturnsModule } from './returns/returns.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { ReportsModule } from './reports/reports.module';
 import { ImportsModule } from './imports/imports.module';
+import { OperationsModule } from './operations/operations.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ImportsModule } from './imports/imports.module';
     RealtimeModule,
     ReportsModule,
     ImportsModule,
+    OperationsModule,
   ],
   controllers: [HealthController],
   providers: [

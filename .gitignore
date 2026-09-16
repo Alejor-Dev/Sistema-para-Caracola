@@ -14,3 +14,4 @@ logs/
 .bridge-restart-request
 .bridge-restart-ack
 .local/
+.mssr/runtime/
