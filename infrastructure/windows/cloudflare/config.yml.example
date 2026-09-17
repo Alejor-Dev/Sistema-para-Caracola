@@ -2,7 +2,7 @@ tunnel: REEMPLAZAR_TUNNEL_UUID
 credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\REEMPLAZAR_TUNNEL_UUID.json
 
 loglevel: info
-logfile: C:\ProgramData\CRM-LocalDeRopa\logs\cloudflared.log
+logfile: C:\ProgramData\Caracola\logs\cloudflared.log
 metrics: 127.0.0.1:20241
 
 ingress:

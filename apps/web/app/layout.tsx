@@ -3,10 +3,10 @@ import { PwaBootstrap } from './components/pwa-bootstrap';
 import './styles.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Local de Ropa', template: '%s · Local de Ropa' },
+  title: { default: 'Caracola', template: '%s · Caracola' },
   description: 'Gestión comercial, ventas e inventario.',
   manifest: '/manifest.webmanifest',
-  applicationName: 'CRM Local de Ropa',
+  applicationName: 'Caracola',
   formatDetection: { telephone: false },
   icons: {
     icon: [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
-  appleWebApp: { capable: true, title: 'Local de Ropa', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: 'Caracola', statusBarStyle: 'black-translucent' },
 };
 
 export const viewport: Viewport = { themeColor: '#17211c', colorScheme: 'light' };

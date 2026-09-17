@@ -1,7 +1,7 @@
 export default function OfflinePage() {
   return (
     <main className="offline-shell">
-      <div className="brand-mark" aria-hidden="true">LR</div>
+      <img className="brand-logo" src="/brand/caracola-logo.png" alt="" aria-hidden="true" />
       <p className="eyebrow dark">CONEXIÓN INTERRUMPIDA</p>
       <h1>La PC principal no está disponible</h1>
       <p>

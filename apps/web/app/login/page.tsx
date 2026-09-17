@@ -27,9 +27,9 @@ export default function LoginPage() {
   return (
     <main className="login-shell">
       <section className="brand-panel">
-        <div className="brand-mark">LR</div>
+        <img className="brand-logo" src="/brand/caracola-logo.png" alt="Caracola" />
         <p className="eyebrow">GESTIÓN COMERCIAL</p>
-        <h1>Tu local, ordenado en un solo lugar.</h1>
+        <h1>Caracola, ordenada en un solo lugar.</h1>
         <p className="brand-copy">Ventas, stock y clientes conectados en tiempo real, desde la caja o el celular.</p>
         <div className="trust-row"><span>Datos locales</span><span>Acceso seguro</span><span>Auditoría</span></div>
       </section>

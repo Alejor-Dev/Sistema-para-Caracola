@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'CRM Local de Ropa',
-    short_name: 'CRM Ropa',
+    name: 'Caracola',
+    short_name: 'Caracola',
     description: 'Gestión comercial, ventas e inventario.',
     id: '/',
     start_url: '/dashboard?source=pwa',

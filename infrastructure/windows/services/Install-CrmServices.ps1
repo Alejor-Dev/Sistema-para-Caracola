@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 [CmdletBinding(SupportsShouldProcess)]
 param(
-  [string]$ConfigPath = 'C:\ProgramData\CRM-LocalDeRopa\config\production.json',
+  [string]$ConfigPath = 'C:\ProgramData\Caracola\config\production.json',
   [Parameter(Mandatory)][string]$WinSwPath
 )
 $ErrorActionPreference = 'Stop'
@@ -38,6 +38,6 @@ $taskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $taskA
 $time = [DateTime]::ParseExact($config.backup.schedule, 'HH:mm', [Globalization.CultureInfo]::InvariantCulture)
 $triggers = @((New-ScheduledTaskTrigger -Daily -At $time), (New-ScheduledTaskTrigger -AtStartup -RandomDelay (New-TimeSpan -Minutes 10)))
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 4)
-if ($PSCmdlet.ShouldProcess('CRM Local de Ropa - Backup', 'Registrar tarea programada')) {
-  Register-ScheduledTask -TaskName 'CRM Local de Ropa - Backup' -Action $taskAction -Trigger $triggers -Settings $settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null
+if ($PSCmdlet.ShouldProcess('Caracola - Backup', 'Registrar tarea programada')) {
+  Register-ScheduledTask -TaskName 'Caracola - Backup' -Action $taskAction -Trigger $triggers -Settings $settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null
 }

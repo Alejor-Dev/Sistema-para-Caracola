@@ -29,8 +29,8 @@ foreach ($entry in $manifest.files) {
     }
 }
 
-$installRoot = 'C:\Program Files\CRM Local de Ropa'
-$dataRoot = 'C:\ProgramData\CRM-LocalDeRopa'
+$installRoot = 'C:\Program Files\Caracola'
+$dataRoot = 'C:\ProgramData\Caracola'
 $versionRoot = Join-Path $installRoot "versions\$($manifest.version)"
 $currentLink = Join-Path $installRoot 'current'
 $configTarget = Join-Path $dataRoot 'config\production.json'
@@ -89,8 +89,8 @@ $services = Join-Path $versionRoot 'infrastructure\windows\services\Install-CrmS
 $winSw = Join-Path $versionRoot 'tools\\WinSW-x64.exe'
 & $services -ConfigPath $configTarget -WinSwPath $winSw
 
-if (-not (Get-NetFirewallRule -DisplayName 'CRM Local de Ropa (red privada)' -ErrorAction SilentlyContinue)) {
-    New-NetFirewallRule -DisplayName 'CRM Local de Ropa (red privada)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 -Profile Private | Out-Null
+if (-not (Get-NetFirewallRule -DisplayName 'Caracola (red privada)' -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName 'Caracola (red privada)' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 -Profile Private | Out-Null
 }
 
-Write-Host "CRM Local de Ropa $($manifest.version) installed. Data remains in $dataRoot."
+Write-Host "Caracola $($manifest.version) installed. Data remains in $dataRoot."

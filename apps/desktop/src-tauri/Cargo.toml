@@ -1,8 +1,8 @@
 [package]
 name = "crm-local-de-ropa"
 version = "0.1.0"
-description = "Aplicación de escritorio del CRM Local de Ropa"
-authors = ["CRM Local de Ropa"]
+description = "Aplicación de escritorio de Caracola"
+authors = ["Caracola"]
 edition = "2021"
 
 [lib]

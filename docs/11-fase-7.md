@@ -8,8 +8,8 @@ El instalador final firmado se obtiene desde el flujo **Windows release**. La fi
 
 ## Estructura de producción
 
-- código inmutable y versiones: `C:\Program Files\CRM-LocalDeRopa`;
-- configuración, secretos, imágenes, estado, logs y backups: `C:\ProgramData\CRM-LocalDeRopa`;
+- código inmutable y versiones: `C:\Program Files\Caracola`;
+- configuración, secretos, imágenes, estado, logs y backups: `C:\ProgramData\Caracola`;
 - enlace `current` hacia la versión activa para actualizaciones atómicas;
 - servicios `CrmApi` y `CrmWeb` administrados por WinSW;
 - PostgreSQL nativo, API en loopback y frontend en el puerto 3000;

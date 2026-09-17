@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact='High')]
 param(
-  [string]$ConfigPath = 'C:\ProgramData\CRM-LocalDeRopa\config\production.json',
+  [string]$ConfigPath = 'C:\ProgramData\Caracola\config\production.json',
   [string]$Snapshot = 'latest',
   [string]$TargetDatabase,
   [switch]$Execute

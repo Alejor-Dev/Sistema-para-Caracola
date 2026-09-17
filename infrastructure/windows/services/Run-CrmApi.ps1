@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$ConfigPath = 'C:\ProgramData\CRM-LocalDeRopa\config\production.json')
+param([string]$ConfigPath = 'C:\ProgramData\Caracola\config\production.json')
 $ErrorActionPreference = 'Stop'
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
 Import-Module (Join-Path $config.installRoot 'current\infrastructure\windows\common\Crm.Common.psm1') -Force

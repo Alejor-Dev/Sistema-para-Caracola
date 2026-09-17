@@ -148,7 +148,22 @@ Pruebas mínimas:
 - restauración en otra máquina desde copia cifrada;
 - actualización conserva datos y sesiones según política.
 
-## 9. Fase 8 — Validación de producción
+## 9. Fase 7.5 — Cambios menores de marca
+
+Entregables:
+
+- reemplazar el nombre genérico anterior por `Caracola` en interfaz, recibos, PWA, escritorio e instalador;
+- integrar el logo provisto por el cliente en login, navegación, manifest, iconos de escritorio y artefactos de instalación;
+- revisar textos visibles, títulos de ventana y metadata para que no queden marcas temporales anteriores;
+- verificar que los cambios se vean correctamente en escritorio y móvil antes de generar el instalador final.
+
+Pruebas mínimas:
+
+- recorrido visual de login, dashboard, POS, recibo imprimible y navegación móvil;
+- comprobación de manifest/PWA e iconos de Tauri/instalador;
+- búsqueda de textos genéricos restantes en código y documentación de usuario.
+
+## 10. Fase 8 — Validación de producción
 
 - pruebas E2E del flujo completo de 26 pasos;
 - carga con 10.000 productos, 100.000 ventas y 500.000 movimientos;
@@ -159,7 +174,7 @@ Pruebas mínimas:
 - piloto controlado en el local y corrección de incidencias;
 - build, instalador, manual de usuario y manual técnico finales.
 
-## 10. Criterio de terminado por historia
+## 11. Criterio de terminado por historia
 
 Una historia está terminada cuando:
 
@@ -173,7 +188,7 @@ Una historia está terminada cuando:
 8. la documentación/API fue actualizada;
 9. no contiene TODOs que sustituyan el comportamiento prometido.
 
-## 11. Primer backlog ejecutable de Fase 2
+## 12. Primer backlog ejecutable de Fase 2
 
 Orden recomendado:
 
@@ -188,7 +203,7 @@ Orden recomendado:
 9. Crear shell Next.js, login y navegación según permisos.
 10. Añadir pruebas de integración con PostgreSQL real y E2E del login.
 
-## 12. Decisiones de negocio requeridas
+## 13. Decisiones de negocio requeridas
 
 Antes de cerrar cada módulo se confirmarán, sin bloquear el scaffolding inicial:
 

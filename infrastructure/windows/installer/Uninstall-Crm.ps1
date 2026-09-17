@@ -7,7 +7,7 @@ $common = Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyComm
 Import-Module $common -Force
 Assert-CrmAdministrator
 
-if (-not $PSCmdlet.ShouldProcess('CRM Local de Ropa', 'Uninstall services and application files')) { return }
+if (-not $PSCmdlet.ShouldProcess('Caracola', 'Uninstall services and application files')) { return }
 
 foreach ($service in @('CrmApi', 'CrmWeb')) {
     $svc = Get-Service -Name $service -ErrorAction SilentlyContinue
@@ -16,12 +16,12 @@ foreach ($service in @('CrmApi', 'CrmWeb')) {
         sc.exe delete $service | Out-Null
     }
 }
-Unregister-ScheduledTask -TaskName 'CRM Local de Ropa - Backup' -Confirm:$false -ErrorAction SilentlyContinue
-Get-NetFirewallRule -DisplayName 'CRM Local de Ropa (red privada)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-$installRoot = 'C:\Program Files\CRM Local de Ropa'
+Unregister-ScheduledTask -TaskName 'Caracola - Backup' -Confirm:$false -ErrorAction SilentlyContinue
+Get-NetFirewallRule -DisplayName 'Caracola (red privada)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+$installRoot = 'C:\Program Files\Caracola'
 if (Test-Path -LiteralPath $installRoot) { Remove-Item -LiteralPath $installRoot -Recurse -Force }
 
-$dataRoot = 'C:\ProgramData\CRM-LocalDeRopa'
+$dataRoot = 'C:\ProgramData\Caracola'
 if ($RemoveData) {
     if ($PSCmdlet.ShouldProcess($dataRoot, 'Permanently remove configuration, secrets, database backups and state')) {
         Remove-Item -LiteralPath $dataRoot -Recurse -Force -ErrorAction SilentlyContinue

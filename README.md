@@ -1,4 +1,4 @@
-# CRM Local de Ropa
+# Caracola
 
 Sistema integral de gestión comercial para un local de indumentaria, con una única base de datos PostgreSQL alojada en la PC principal, aplicación de escritorio para Windows y acceso web/PWA seguro desde celulares y otras computadoras.
 
@@ -17,6 +17,7 @@ Documentación del proyecto:
 - [Fase 5: dashboard, reportes y control](docs/09-fase-5.md)
 - [Fase 6: PWA, escritorio y acceso remoto](docs/10-fase-6.md)
 - [Fase 7: instalación, continuidad y actualización](docs/11-fase-7.md)
+- Fase 7.5: cambios menores de marca para Caracola
 
 ## Decisiones principales
 
@@ -29,7 +30,7 @@ Documentación del proyecto:
 - Cloudflare Tunnel para acceso remoto HTTPS, sin publicar PostgreSQL.
 - Backups locales y externos cifrados, con restauraciones probadas periódicamente.
 
-El siguiente incremento es la Fase 8: validación en una PC limpia del cliente, firma del instalador y despliegue productivo.
+El siguiente incremento es la Fase 7.5: cambios menores de marca para Caracola, incluyendo nombre, logo e iconos antes de la validación final. Luego continúa la Fase 8: validación en una PC limpia del cliente, firma del instalador y despliegue productivo.
 
 ## Implementación
 
@@ -46,3 +47,5 @@ La Fase 5 convierte el panel en una vista operativa real, agrega reportes por ra
 La Fase 6 agrega una PWA instalable sin cachear datos sensibles, proxy web de mismo origen, acceso LAN restringido, carcasa Windows Tauri y configuración de Cloudflare Tunnel. Consultar [Fase 6](docs/10-fase-6.md).
 
 La Fase 7 agrega instalación versionada, servicios Windows autorrecuperables, secretos DPAPI, backups restic cifrados con retención, restauración a una base aislada, estado operativo en el dashboard y actualización con rollback. GitHub Actions genera el paquete de servidor y el instalador Tauri; la firma requiere el certificado del cliente. Consultar [Fase 7](docs/11-fase-7.md).
+
+La Fase 7.5 cubre cambios menores de marca antes del instalador final: reemplazar el nombre genérico por Caracola, integrar el logo provisto, actualizar iconos de app/PWA/instalador y verificar que recibos, títulos y pantallas principales muestren la marca correcta.

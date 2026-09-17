@@ -2,7 +2,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param([ValidateRange(1, 65535)][int]$Port = 3000)
 
-$ruleName = 'CRM Local de Ropa - Web privada'
+$ruleName = 'Caracola - Web privada'
 $existing = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Output "La regla '$ruleName' ya existe."

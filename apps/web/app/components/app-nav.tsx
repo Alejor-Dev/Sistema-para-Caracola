@@ -8,5 +8,5 @@ const links = [
 ] as const;
 
 export function AppNav({ active }: { active: string }) {
-  return <aside className="sidebar"><div className="sidebar-brand"><span className="mini-mark">LR</span><strong>Local de Ropa</strong></div><nav>{links.map(([href, label]) => <Link className={active === href ? 'nav-active' : undefined} href={href} key={href}>{label}<span>›</span></Link>)}</nav></aside>;
+  return <aside className="sidebar"><div className="sidebar-brand"><img className="mini-logo" src="/brand/caracola-logo.png" alt="" /><strong>Caracola</strong></div><nav>{links.map(([href, label]) => <Link className={active === href ? 'nav-active' : undefined} href={href} key={href}>{label}<span>›</span></Link>)}</nav></aside>;
 }

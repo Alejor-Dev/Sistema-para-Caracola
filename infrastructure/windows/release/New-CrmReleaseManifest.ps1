@@ -22,7 +22,7 @@ $files = Get-ChildItem -LiteralPath $root -File -Recurse |
 
 $manifest = [ordered]@{
     schemaVersion = 1
-    product = 'CRM Local de Ropa'
+    product = 'Caracola'
     version = $Version
     createdAt = [DateTime]::UtcNow.ToString('o')
     files = @($files)

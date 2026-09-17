@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SessionUser } from '@crm/contracts';
 import { api } from '../../../lib/api';
+import { AppNav } from '../../components/app-nav';
 import { MobileNav } from '../../components/mobile-nav';
 
 interface Role { id: string; code: string; name: string; isSystem: boolean; _count: { users: number }; permissions: Array<{ permission: { code: string } }> }
@@ -62,10 +62,7 @@ export default function UsersPage() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-brand"><span className="mini-mark">LR</span><strong>Local de Ropa</strong></div>
-        <nav><Link href="/dashboard">Inicio<span>›</span></Link><Link href="/products">Productos<span>›</span></Link><Link href="/inventory">Stock<span>›</span></Link><Link href="/suppliers">Proveedores<span>›</span></Link><Link className="nav-active" href="/settings/users">Usuarios y roles<span>›</span></Link></nav>
-      </aside>
+      <AppNav active="/settings/users" />
       <section className="workspace admin-workspace">
         <header><div><p className="eyebrow dark">SEGURIDAD</p><h1>Usuarios y roles</h1><p className="muted">Controlá quién entra al sistema y qué puede hacer.</p></div><span className="status"><i /> Sesión protegida</span></header>
         {(error || message) && <p className={error ? 'error' : 'success'} role="status">{error || message}</p>}

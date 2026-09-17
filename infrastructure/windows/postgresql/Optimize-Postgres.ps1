@@ -56,7 +56,7 @@ $current = [regex]::Replace($current, '(?s)\r?\n# BEGIN CRM-LOCALDEROPA MANAGED 
 if ($PSCmdlet.ShouldProcess($configPath, 'Aplicar configuración optimizada del CRM')) {
   Set-Content -LiteralPath $configPath -Value ($current.TrimEnd() + $managedConfig) -Encoding UTF8
   Set-Content -LiteralPath $hbaPath -Value @(
-    '# Managed by CRM Local de Ropa. PostgreSQL is local-only.'
+    '# Managed by Caracola. PostgreSQL is local-only.'
     'local   all             all                                     scram-sha-256'
     'host    all             all             127.0.0.1/32            scram-sha-256'
     'host    all             all             ::1/128                 scram-sha-256'

@@ -1,27 +1,27 @@
 {
   "version": "0.2.0",
-  "installRoot": "C:\\Program Files\\CRM-LocalDeRopa",
-  "dataRoot": "C:\\ProgramData\\CRM-LocalDeRopa",
-  "nodePath": "C:\\Program Files\\CRM-LocalDeRopa\\current\\runtime\\node.exe",
+  "installRoot": "C:\\Program Files\\Caracola",
+  "dataRoot": "C:\\ProgramData\\Caracola",
+  "nodePath": "C:\\Program Files\\Caracola\\current\\runtime\\node.exe",
   "postgresService": "postgresql-x64-17",
   "database": {
     "host": "127.0.0.1",
     "port": 5432,
     "name": "crm_localderopa",
     "user": "crm_app",
-    "passwordSecret": "C:\\ProgramData\\CRM-LocalDeRopa\\secrets\\postgres.dpapi"
+    "passwordSecret": "C:\\ProgramData\\Caracola\\secrets\\postgres.dpapi"
   },
   "backup": {
-    "resticPath": "C:\\Program Files\\CRM-LocalDeRopa\\current\\tools\\restic.exe",
+    "resticPath": "C:\\Program Files\\Caracola\\current\\tools\\restic.exe",
     "pgDumpPath": "C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe",
     "pgRestorePath": "C:\\Program Files\\PostgreSQL\\17\\bin\\pg_restore.exe",
     "createdbPath": "C:\\Program Files\\PostgreSQL\\17\\bin\\createdb.exe",
-    "repository": "C:\\ProgramData\\CRM-LocalDeRopa\\backups\\repository",
-    "passwordSecret": "C:\\ProgramData\\CRM-LocalDeRopa\\secrets\\restic.dpapi",
+    "repository": "C:\\ProgramData\\Caracola\\backups\\repository",
+    "passwordSecret": "C:\\ProgramData\\Caracola\\secrets\\restic.dpapi",
     "externalRepository": "",
     "externalPasswordSecret": "",
     "schedule": "02:00",
-    "imagesPath": "C:\\ProgramData\\CRM-LocalDeRopa\\images",
-    "statusFile": "C:\\ProgramData\\CRM-LocalDeRopa\\state\\backup-status.json"
+    "imagesPath": "C:\\ProgramData\\Caracola\\images",
+    "statusFile": "C:\\ProgramData\\Caracola\\state\\backup-status.json"
   }
 }

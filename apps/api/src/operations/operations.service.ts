@@ -13,7 +13,7 @@ export interface BackupStatus {
 
 @Injectable()
 export class OperationsService {
-  private readonly statusFile = process.env.BACKUP_STATUS_FILE ?? 'C:\\ProgramData\\CRM-LocalDeRopa\\state\\backup-status.json';
+  private readonly statusFile = process.env.BACKUP_STATUS_FILE ?? 'C:\\ProgramData\\Caracola\\state\\backup-status.json';
 
   async backupStatus(): Promise<BackupStatus> {
     try {

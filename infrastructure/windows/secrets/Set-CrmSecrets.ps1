@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 [CmdletBinding()]
 param(
-  [string]$ConfigPath = 'C:\ProgramData\CRM-LocalDeRopa\config\production.json'
+  [string]$ConfigPath = 'C:\ProgramData\Caracola\config\production.json'
 )
 
 $ErrorActionPreference = 'Stop'
