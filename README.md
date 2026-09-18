@@ -49,3 +49,7 @@ La Fase 6 agrega una PWA instalable sin cachear datos sensibles, proxy web de mi
 La Fase 7 agrega instalación versionada, servicios Windows autorrecuperables, secretos DPAPI, backups restic cifrados con retención, restauración a una base aislada, estado operativo en el dashboard y actualización con rollback. GitHub Actions genera el paquete de servidor y el instalador Tauri; la firma requiere el certificado del cliente. Consultar [Fase 7](docs/11-fase-7.md).
 
 La Fase 7.5 cubre cambios menores de marca antes del instalador final: reemplazar el nombre genérico por Caracola, integrar el logo provisto, actualizar iconos de app/PWA/instalador y verificar que recibos, títulos y pantallas principales muestren la marca correcta.
+
+## Instalación todo-en-uno para el cliente
+
+Para un equipo nuevo, el artefacto `Caracola-Setup-<version>.exe` (instalador NSIS todo-en-uno) instala PostgreSQL 17, la base, los servicios `CrmApi`/`CrmWeb`, los secretos y la carcasa de escritorio con un solo doble clic, y arranca el asistente del primer administrador. El orquestador es `infrastructure\windows\installer\Complete-CrmInstall.ps1`; los detalles están en [Fase 7](docs/11-fase-7.md).

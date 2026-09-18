@@ -90,4 +90,25 @@ function Test-CrmFileHash {
   return $true
 }
 
-Export-ModuleMember -Function Assert-CrmAdministrator,Get-CrmExecutable,Invoke-CrmProcess,Write-CrmJsonAtomically,Protect-CrmSecret,Unprotect-CrmSecret,Test-CrmFileHash
+function New-CrmRandomSecret {
+  param([Parameter(Mandatory)][string]$Suffix = '-U0!')
+  $random = New-Object byte[] 24
+  [Security.Cryptography.RandomNumberGenerator]::Fill($random)
+  $builder = [Text.StringBuilder]::new()
+  foreach ($byte in $random) {
+    if (($byte -ge 65 -and $byte -le 90) -or ($byte -ge 97 -and $byte -le 122)) { [void]$builder.Append([char]$byte) }
+  }
+  $plain = $builder.ToString() + (Get-Date -Format 'yyMMddHHmmss') + $Suffix
+  $secure = [Security.SecureString]::new()
+  foreach ($char in $plain.ToCharArray()) { $secure.AppendChar($char) }
+  return $secure
+}
+
+function Convert-CrmSecureStringToPlain {
+  param([Parameter(Mandatory)][Security.SecureString]$Value)
+  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
+  try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
+}
+
+Export-ModuleMember -Function Assert-CrmAdministrator,Get-CrmExecutable,Invoke-CrmProcess,Write-CrmJsonAtomically,Protect-CrmSecret,Unprotect-CrmSecret,Test-CrmFileHash,New-CrmRandomSecret,Convert-CrmSecureStringToPlain

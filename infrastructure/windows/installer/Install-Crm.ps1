@@ -3,6 +3,8 @@
 param(
     [Parameter(Mandatory)][string]$ReleasePath,
     [string]$ConfigPath,
+    [Security.SecureString]$DatabasePassword,
+    [Security.SecureString]$ResticPassword,
     [switch]$SkipDatabaseMigration
 )
 
@@ -45,7 +47,7 @@ New-Item -ItemType Directory -Path $versionRoot -Force | Out-Null
 Copy-Item -Path (Join-Path $releaseRoot '*') -Destination $versionRoot -Recurse -Force
 
 if (-not (Test-Path -LiteralPath $configTarget)) {
-    $sourceConfig = if ($ConfigPath) { $ConfigPath } else { Join-Path $versionRoot 'infrastructure\windows\config\production.example.json' }
+    $sourceConfig = if ($ConfigPath -and $ConfigPath -ne $configTarget) { $ConfigPath } else { Join-Path $versionRoot 'infrastructure\windows\config\production.example.json' }
     Copy-Item -LiteralPath $sourceConfig -Destination $configTarget
 }
 $config = Get-Content -LiteralPath $configTarget -Raw | ConvertFrom-Json
@@ -69,24 +71,25 @@ if (-not (Test-Path -LiteralPath $webEnv)) {
 }
 
 $secretScript = Join-Path $versionRoot 'infrastructure\windows\secrets\Set-CrmSecrets.ps1'
-& $secretScript -ConfigPath $configTarget
+& $secretScript -ConfigPath $configTarget -DatabasePassword $DatabasePassword -ResticPassword $ResticPassword
 
 if (-not $SkipDatabaseMigration) {
     $config = Get-Content -LiteralPath $configTarget -Raw | ConvertFrom-Json
-    $password = Unprotect-CrmSecret -Path (Join-Path $dataRoot 'secrets\database-password.dpapi')
+    $password = Unprotect-CrmSecret -Path $config.database.passwordSecret
     $encodedUser = [Uri]::EscapeDataString([string]$config.database.user)
     $encodedPassword = [Uri]::EscapeDataString($password)
-    $env:DATABASE_URL = "postgresql://${encodedUser}:${encodedPassword}@$($config.database.host):$($config.database.port)/$($config.database.name)"
-    $node = Get-CrmExecutable -ConfiguredPath (Join-Path $versionRoot 'runtime\\node.exe') -Name 'Node.js'
+    $env:DATABASE_URL = "postgresql://${encodedUser}:${encodedPassword}@$($config.database.host):$($config.database.port)/$($config.database.name)?schema=public&connection_limit=10&pool_timeout=10"
+    $node = Get-CrmExecutable -ConfiguredPath (Join-Path $versionRoot 'runtime\node.exe') -Name 'Node.js'
     Invoke-CrmProcess -FilePath $node -ArgumentList @((Join-Path $versionRoot 'node_modules\prisma\build\index.js'), 'migrate', 'deploy', '--schema', (Join-Path $versionRoot 'apps\api\prisma\schema.prisma')) | Out-Null
     Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+    $password = $null
 }
 
 if (Test-Path -LiteralPath $currentLink) { Remove-Item -LiteralPath $currentLink -Force }
 New-Item -ItemType Junction -Path $currentLink -Target $versionRoot | Out-Null
 
 $services = Join-Path $versionRoot 'infrastructure\windows\services\Install-CrmServices.ps1'
-$winSw = Join-Path $versionRoot 'tools\\WinSW-x64.exe'
+$winSw = Join-Path $versionRoot 'tools\WinSW-x64.exe'
 & $services -ConfigPath $configTarget -WinSwPath $winSw
 
 if (-not (Get-NetFirewallRule -DisplayName 'Caracola (red privada)' -ErrorAction SilentlyContinue)) {

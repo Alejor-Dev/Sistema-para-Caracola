@@ -61,8 +61,41 @@ jobs:
           Invoke-WebRequest 'https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_windows_amd64.zip' -OutFile (Join-Path $env:RUNNER_TEMP 'restic.zip')
           Expand-Archive (Join-Path $env:RUNNER_TEMP 'restic.zip') -DestinationPath (Join-Path $payload 'tools')
           Move-Item (Join-Path $payload 'tools\restic_0.17.3_windows_amd64.exe') (Join-Path $payload 'tools\restic.exe')
+          $pgUrl = 'https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64.exe'
+          $pgInstaller = Join-Path $payload 'tools\postgresql-17.6-1-windows-x64.exe'
+          Invoke-WebRequest $pgUrl -OutFile $pgInstaller
+          $pgHash = (Get-FileHash -LiteralPath $pgInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          [ordered]@{ url = $pgUrl; sha256 = $pgHash; localFile = 'tools\postgresql-17.6-1-windows-x64.exe' } |
+            ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $payload 'infrastructure\windows\config\postgres-source.json')
           "PAYLOAD=$payload" | Out-File -FilePath $env:GITHUB_ENV -Append
           "CLEAN_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "PG_SHA256=$pgHash" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Create verified release archive
+        shell: pwsh
+        run: |
+          ./infrastructure/windows/release/New-CrmReleaseManifest.ps1 -PayloadPath $env:PAYLOAD -Version $env:CLEAN_VERSION
+          Compress-Archive -Path (Join-Path $env:PAYLOAD '*') -DestinationPath "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -CompressionLevel Optimal
+          Get-FileHash "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" } |
+            Set-Content "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip.sha256"
+          "PAYLOAD_ZIP=$(Resolve-Path "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip")" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "DESKTOP_EXE=$(Resolve-Path 'apps/desktop/src-tauri/target/release/crm-local-de-ropa.exe')" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "ALL_IN_ONE=$(Join-Path $env:RUNNER_TEMP "Caracola-Setup-$env:CLEAN_VERSION.exe")" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Build all-in-one installer (PostgreSQL + Caracola)
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $makensis = 'C:\Program Files (x86)\NSIS\makensis.exe'
+          if (-not (Test-Path -LiteralPath $makensis)) { throw 'makensis.exe was not found after choco install.' }
+          & $makensis "/DPRODUCT_VERSION=$env:CLEAN_VERSION" "/DOUTFILE=$env:ALL_IN_ONE" "/DDESKTOPEXE=$env:DESKTOP_EXE" "/DCRMPAYLOADZIP=$env:PAYLOAD_ZIP" "/DCRMPAYLOADZIP_BASENAME=payload.zip" "/DCOMPANY_NAME=Caracola" 'infrastructure/windows/installer/packaging/Caracola-Setup.nsi'
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $env:ALL_IN_ONE)) { throw 'Failed to build the all-in-one installer.' }
+          Move-Item $env:ALL_IN_ONE "Caracola-Setup-$env:CLEAN_VERSION.exe"
+          "ALL_IN_ONE=$(Resolve-Path "Caracola-Setup-$env:CLEAN_VERSION.exe")" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Get-FileHash "Caracola-Setup-$env:CLEAN_VERSION.exe" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  Caracola-Setup-$env:CLEAN_VERSION.exe" } |
+            Set-Content "Caracola-Setup-$env:CLEAN_VERSION.exe.sha256"
 
       - name: Sign Windows executables
         if: env.CERTIFICATE_BASE64 != ''
@@ -75,20 +108,24 @@ jobs:
           if (-not $signtool) { throw 'signtool.exe was not found.' }
           $executables = @(Get-ChildItem $env:PAYLOAD -Filter *.exe -Recurse)
           $executables += @(Get-ChildItem 'apps/desktop/src-tauri/target/release/bundle/nsis' -Filter *.exe)
+          if (Test-Path -LiteralPath $env:ALL_IN_ONE) { $executables += Get-Item -LiteralPath $env:ALL_IN_ONE }
+          $executables += @(Get-ChildItem 'apps/desktop/src-tauri/target/release' -Filter 'crm-local-de-ropa.exe')
           $executables | ForEach-Object {
             & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $pfx /p $env:CERTIFICATE_PASSWORD $_.FullName
             if ($LASTEXITCODE -ne 0) { throw "Signing failed: $($_.FullName)" }
           }
           Remove-Item $pfx -Force
 
-      - name: Create verified release archive
+      - name: Refresh hashes after signing
+        if: env.CERTIFICATE_BASE64 != ''
         shell: pwsh
         run: |
-          ./infrastructure/windows/release/New-CrmReleaseManifest.ps1 -PayloadPath $env:PAYLOAD -Version $env:CLEAN_VERSION
-          Compress-Archive -Path (Join-Path $env:PAYLOAD '*') -DestinationPath "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -CompressionLevel Optimal
           Get-FileHash "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" } |
             Set-Content "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip.sha256"
+          Get-FileHash "Caracola-Setup-$env:CLEAN_VERSION.exe" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  Caracola-Setup-$env:CLEAN_VERSION.exe" } |
+            Set-Content "Caracola-Setup-$env:CLEAN_VERSION.exe.sha256"
 
       - name: Upload server package
         uses: actions/upload-artifact@v4
@@ -104,4 +141,13 @@ jobs:
         with:
           name: CRM-LocalDeRopa-Desktop-${{ env.CLEAN_VERSION }}
           path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Upload all-in-one installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: CRM-LocalDeRopa-AllInOne-${{ env.CLEAN_VERSION }}
+          path: |
+            Caracola-Setup-${{ env.CLEAN_VERSION }}.exe
+            Caracola-Setup-${{ env.CLEAN_VERSION }}.exe.sha256
           if-no-files-found: error

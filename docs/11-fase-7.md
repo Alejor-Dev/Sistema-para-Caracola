@@ -43,6 +43,28 @@ La actualización valida todos los SHA-256 del manifiesto, ejecuta un backup pre
 
 Las migraciones de base son *forward-only*: deben mantener compatibilidad con la versión anterior porque el rollback automático cubre binarios, no deshace datos.
 
+## Instalador todo-en-uno (doble clic)
+
+Para un equipo nuevo, GitHub Actions publica además el artefacto **`Caracola-Setup-<version>.exe`** (NSIS, artefacto `CRM-LocalDeRopa-AllInOne-<version>`). Con un doble clic elevado:
+
+1. extrae el paquete de servidor (`CRM-LocalDeRopa-<version>.zip`) bajo el directorio de instalación;
+2. ejecuta `Complete-CrmInstall.ps1`, que:
+   - valida prerrequisitos del equipo (`Test-ClientPrerequisites.ps1`);
+   - instala PostgreSQL 17 de EnterpriseDB en modo silencioso verificando firma Authenticode y SHA-256 pinneado en CI (`Install-Postgres.ps1`), o reutiliza una instalación existente;
+   - aplica `Optimize-Postgres.ps1` (escucha solo en `127.0.0.1`, tuning según RAM/cpu, SCRAM);
+   - inicializa base y rol `crm_app` con credenciales generadas en memoria (`Initialize-CrmDatabase.ps1`);
+   - instala la aplicación versionada, servicios `CrmApi`/`CrmWeb`, secretos DPAPI, firewall y tareas de backup (`Install-Crm.ps1`);
+   - verifica que `/api/v1/health` y el frontend respondan, e instala el runtime WebView2 si falta;
+3. deja la carcasa Tauri (`Caracola.exe`) instalada con acceso directo e inicia el asistente del primer administrador.
+
+El instalador de PostgreSQL viaja embebido en el paquete, así que el equipo del cliente no necesita el instalador EDB ni Internet para la instalación base. El SHA-256 se fija en tiempo de build: el flujo descarga el binario, lo hashea y escribe `infrastructure/windows/config/postgres-source.json` dentro del propio paquete.
+
+Las tres entregas por versión son:
+
+- `CRM-LocalDeRopa-<version>.zip` + `.sha256`: paquete de servidor para actualizaciones (`Update-Crm.ps1`);
+- `CRM-LocalDeRopa-Desktop-<version>`: instalador NSIS de la carcasa de escritorio;
+- `Caracola-Setup-<version>.exe` + `.sha256`: instalador todo-en-uno para equipos nuevos.
+
 ## Compilación y firma
 
 `.github/workflows/windows-release.yml` verifica tipos, pruebas, builds y scripts PowerShell en un runner limpio de Windows. Luego compila Tauri/NSIS, prepara el paquete de servidor con Node, WinSW y restic, genera manifiesto de integridad y publica ambos artefactos.
@@ -59,11 +81,14 @@ Sin esos secretos el flujo genera artefactos sin firma, útiles para validación
 Abrir PowerShell como administrador:
 
 ```powershell
+.\infrastructure\windows\installer\Complete-CrmInstall.ps1 -ReleasePath C:\Ruta\Paquete
 .\infrastructure\windows\installer\Install-Crm.ps1 -ReleasePath C:\Ruta\Paquete
 .\infrastructure\windows\backup\Backup-Crm.ps1
 .\infrastructure\windows\backup\Restore-Crm.ps1 -SnapshotId latest -TargetDatabase crm_restore_test
 .\infrastructure\windows\update\Update-Crm.ps1 -ReleasePath C:\Ruta\NuevaVersion
 .\infrastructure\windows\installer\Uninstall-Crm.ps1
 ```
+
+`Complete-CrmInstall.ps1` es el orquestador que usan el instalador NSIS y las instalaciones manuales: dado un paquete descargado, resuelve PostgreSQL (instalando o reutilizando), base, secretos, servicios y health check en un solo paso idempotente.
 
 La primera restauración sin `-Execute` solo imprime el plan. Esto permite verificar destino, snapshot y pasos antes de crear una base.

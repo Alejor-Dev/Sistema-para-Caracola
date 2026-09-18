@@ -2,7 +2,9 @@
 param(
   [string]$PsqlPath,
   [string]$HostName = '127.0.0.1',
-  [int]$Port = 5432
+  [int]$Port = 5432,
+  [Security.SecureString]$AdminPassword,
+  [Security.SecureString]$AppPassword
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,17 +24,28 @@ if (-not $PsqlPath -or -not (Test-Path -LiteralPath $PsqlPath -PathType Leaf)) {
   throw "No se encontró psql. Instalá PostgreSQL x64 o indicá -PsqlPath."
 }
 
-$adminPassword = Read-Host 'Contraseña del usuario postgres' -AsSecureString
-$appPassword = Read-Host 'Nueva contraseña para el rol crm_app' -AsSecureString
+Import-Module (Join-Path $PSScriptRoot '..\common\Crm.Common.psm1') -Force
 
-function ConvertTo-PlainText([Security.SecureString]$Value) {
-  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
-  try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
-  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
+$interactive = -not $AdminPassword -and -not $AppPassword
+
+if (-not $AdminPassword) {
+  if ($interactive) {
+    $AdminPassword = Read-Host 'Contraseña del usuario postgres' -AsSecureString
+  } else {
+    throw 'Se requiere -AdminPassword en modo no interactivo.'
+  }
 }
 
-$adminPlain = ConvertTo-PlainText $adminPassword
-$appPlain = ConvertTo-PlainText $appPassword
+if (-not $AppPassword) {
+  if ($interactive) {
+    $AppPassword = Read-Host 'Nueva contraseña para el rol crm_app' -AsSecureString
+  } else {
+    throw 'Se requiere -AppPassword en modo no interactivo.'
+  }
+}
+
+$adminPlain = Convert-CrmSecureStringToPlain $AdminPassword
+$appPlain = Convert-CrmSecureStringToPlain $AppPassword
 
 try {
   $env:PGPASSWORD = $adminPlain
