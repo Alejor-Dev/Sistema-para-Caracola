@@ -44,6 +44,7 @@ Section "Caracola" SEC_APP
 
   SetCompress auto
   File /oname=Caracola.exe "${DESKTOPEXE}"
+  File "/oname=Extract-CaracolaPayload.ps1" "Extract-CaracolaPayload.ps1"
   SetCompress off
   File /oname=payload.zip "${CRMPAYLOADZIP}"
   SetCompress auto
@@ -71,7 +72,7 @@ Section "Servidor (PostgreSQL + Caracola)" SEC_SERVER
 
   DetailPrint "Extrayendo paquete del servidor..."
   CreateDirectory "$INSTDIR\${BOOTSTRAP_DIR}"
-  nsisunz::Unzip "$INSTDIR\${CRMPAYLOADZIP_BASENAME}" "$INSTDIR\${BOOTSTRAP_DIR}"
+  nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\Extract-CaracolaPayload.ps1" -PayloadZip "$INSTDIR\${CRMPAYLOADZIP_BASENAME}" -BootstrapDir "$INSTDIR\${BOOTSTRAP_DIR}"'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "No se pudo extraer el paquete del servidor. Error $0."
@@ -93,11 +94,13 @@ Section "Servidor (PostgreSQL + Caracola)" SEC_SERVER
 
   DetailPrint "Finalizando instalación..."
   Delete "$INSTDIR\${CRMPAYLOADZIP_BASENAME}"
+  Delete "$INSTDIR\Extract-CaracolaPayload.ps1"
   RMDir /r "$INSTDIR\${BOOTSTRAP_DIR}"
 SectionEnd
 
 Section "Uninstall"
   Delete "$INSTDIR\Caracola.exe"
+  Delete "$INSTDIR\Extract-CaracolaPayload.ps1"
   Delete "$INSTDIR\Uninstall-Caracola.exe"
   Delete "$SMPROGRAMS\Caracola.lnk"
   Delete "$DESKTOP\Caracola.lnk"
