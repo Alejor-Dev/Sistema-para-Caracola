@@ -28,6 +28,9 @@ $installRoot = 'C:\Program Files\Caracola'
 
 function Write-Step {
     param([Parameter(Mandatory)][string]$Message)
+    $progressPath = Join-Path $dataRoot 'install-progress.log'
+    New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
+    ('{0:u} {1}' -f (Get-Date), $Message) | Add-Content -LiteralPath $progressPath -Encoding UTF8
     Write-Host "`n=== $Message ===" -ForegroundColor Cyan
 }
 
