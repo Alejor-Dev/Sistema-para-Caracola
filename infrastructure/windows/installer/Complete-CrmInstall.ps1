@@ -65,7 +65,21 @@ if (-not $prereq.compatible) {
         "Detalle: $($prereq.windows), $($prereq.memoryGb) GB RAM, $($prereq.freeDiskGb) GB libres."
 }
 Write-Host "Windows: $($prereq.windows) | RAM: $($prereq.memoryGb) GB | Disco: $($prereq.freeDiskGb) GB" -ForegroundColor Green
-$postgresService = $prereq.postgresService
+$postgresService = 'postgresql-x64-17-caracola'
+$postgresPort = 5433
+$pgVersionDir = 'C:\Program Files\PostgreSQL\17-Caracola'
+$pgDataDir = Join-Path $dataRoot 'PostgreSQL\data'
+if (Test-Path -LiteralPath (Join-Path $dataRoot 'config\production.json')) {
+    throw 'Ya existe una instalación de Caracola. No se sobrescribirán sus datos.'
+}
+if (Get-Service -Name $postgresService,CrmApi,CrmWeb -ErrorAction SilentlyContinue) {
+    throw 'Ya existen servicios de Caracola. Desinstale la versión anterior antes de continuar.'
+}
+foreach ($port in @($postgresPort, 3000, 4000)) {
+    if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
+        throw "El puerto $port está ocupado. Cerrá el programa que lo usa antes de instalar."
+    }
+}
 
 Write-Step 'PostgreSQL'
 $pgSource = Join-Path $releaseRoot 'infrastructure\windows\config\postgres-source.json'
@@ -74,14 +88,8 @@ $pgMeta = Get-Content -LiteralPath $pgSource -Raw | ConvertFrom-Json
 if (-not $pgMeta.sha256) { throw 'postgres-source.json has no sha256 pin.' }
 $pgInstaller = Join-Path $releaseRoot ($pgMeta.localFile -replace '/', '\')
 
-if ($postgresService) {
-    Write-Host "PostgreSQL ya está instalado (servicio $postgresService). Se continua con la base." -ForegroundColor Yellow
-} else {
-    $installPostgres = Join-Path $windowsRoot 'postgresql\Install-Postgres.ps1'
-    & $installPostgres -InstallerPath $pgInstaller -ExpectedSha256 $pgMeta.sha256 -SuperPassword $SuperPassword -ServiceName 'postgresql-x64-17' -DataRoot $dataRoot
-    if ($LASTEXITCODE -ne 0) { throw 'Fallo al instalar PostgreSQL.' }
-    $postgresService = 'postgresql-x64-17'
-}
+$installPostgres = Join-Path $windowsRoot 'postgresql\Install-Postgres.ps1'
+& $installPostgres -InstallerPath $pgInstaller -ExpectedSha256 $pgMeta.sha256 -SuperPassword $SuperPassword -ServiceName $postgresService -ServerPort $postgresPort -Prefix $pgVersionDir -DataRoot $dataRoot
 
 if (-not $SuperPassword -or $SuperPassword.Length -eq 0) {
     $superSecret = Join-Path $dataRoot 'secrets\postgres-super.dpapi'
@@ -99,27 +107,17 @@ if (-not $ResticPassword -or $ResticPassword.Length -eq 0) {
     $ResticPassword = New-CrmRandomSecret -Suffix '-R3!'
 }
 
-$pgBinDir = 'C:\Program Files\PostgreSQL\17\bin'
-if (-not (Test-Path -LiteralPath (Join-Path $pgBinDir 'psql.exe'))) {
-    $found = Get-ChildItem -LiteralPath 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^\d+$' } |
-        Sort-Object { [int]$_.Name } -Descending |
-        Select-Object -First 1
-    if (-not $found) { throw 'No se encontró el directorio de PostgreSQL.' }
-    $pgBinDir = Join-Path $found.FullName 'bin'
-    $pgVersionDir = $found.FullName
-} else {
-    $pgVersionDir = 'C:\Program Files\PostgreSQL\17'
-}
+$pgBinDir = Join-Path $pgVersionDir 'bin'
+if (-not (Test-Path -LiteralPath (Join-Path $pgBinDir 'psql.exe'))) { throw 'No se encontró PostgreSQL privado para Caracola.' }
 
 Write-Step 'Inicialización de base y rol'
 $initScript = Join-Path $windowsRoot 'postgresql\Initialize-CrmDatabase.ps1'
-& $initScript -PsqlPath (Join-Path $pgBinDir 'psql.exe') -Port 5432 -AdminPassword $SuperPassword -AppPassword $DatabasePassword
+& $initScript -PsqlPath (Join-Path $pgBinDir 'psql.exe') -Port $postgresPort -AdminPassword $SuperPassword -AppPassword $DatabasePassword
 if ($LASTEXITCODE -ne 0) { throw 'Fallo al inicializar la base del CRM.' }
 
 Write-Step 'Optimización de PostgreSQL'
 $optimize = Join-Path $windowsRoot 'postgresql\Optimize-Postgres.ps1'
-& $optimize -DataDirectory (Join-Path $pgVersionDir 'data')
+& $optimize -DataDirectory $pgDataDir
 if ($LASTEXITCODE -ne 0) { throw 'Fallo al optimizar PostgreSQL.' }
 $pgService = Get-Service -Name $postgresService
 if ($pgService.Status -eq 'Running') { Restart-Service -Name $postgresService -Force }
@@ -128,6 +126,15 @@ Write-Host "Servicio $postgresService reiniciado con la configuración optimizad
 
 Write-Step 'Instalación de Caracola'
 $install = Join-Path $windowsRoot 'installer\Install-Crm.ps1'
+$configTarget = Join-Path $dataRoot 'config\production.json'
+New-Item -ItemType Directory -Path (Split-Path -Parent $configTarget) -Force | Out-Null
+$config = Get-Content -LiteralPath (Join-Path $windowsRoot 'config\production.example.json') -Raw | ConvertFrom-Json
+$config.postgresService = $postgresService
+$config.database.port = $postgresPort
+$config.backup.pgDumpPath = Join-Path $pgBinDir 'pg_dump.exe'
+$config.backup.pgRestorePath = Join-Path $pgBinDir 'pg_restore.exe'
+$config.backup.createdbPath = Join-Path $pgBinDir 'createdb.exe'
+Write-CrmJsonAtomically -Path $configTarget -Value $config
 $installArguments = @('-ReleasePath', $releaseRoot, '-DatabasePassword', $DatabasePassword, '-ResticPassword', $ResticPassword)
 if ($SkipDatabaseMigration) { $installArguments += '-SkipDatabaseMigration' }
 if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { $installArguments += '-ConfigPath', $ConfigPath }

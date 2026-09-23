@@ -4,7 +4,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $osCaption = [Environment]::OSVersion.VersionString
 $osVersion = [Environment]::OSVersion.Version
-$memoryBytes = [GC]::GetGCMemoryInfo().TotalAvailableMemoryBytes
+$memoryBytes = 0
 $processorCount = [Environment]::ProcessorCount
 
 try {
@@ -15,7 +15,11 @@ try {
   $memoryBytes = [int64]$computerInfo.TotalPhysicalMemory
   $processorCount = $computerInfo.NumberOfLogicalProcessors
 } catch {
-  # El diagnóstico también debe funcionar sin permisos WMI.
+  try {
+    $memoryBytes = [int64](Get-WmiObject Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory
+  } catch {
+    throw 'No se pudo comprobar la memoria del equipo.'
+  }
 }
 
 $systemRoot = [System.IO.Path]::GetPathRoot([Environment]::SystemDirectory)

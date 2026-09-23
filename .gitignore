@@ -11,6 +11,7 @@ coverage/
 apps/api/generated/
 data/
 logs/
+releases/
 .bridge-restart-request
 .bridge-restart-ack
 .local/

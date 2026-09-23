@@ -54,13 +54,15 @@ $current = Get-Content -Raw -LiteralPath $configPath
 $current = [regex]::Replace($current, '(?s)\r?\n# BEGIN CRM-LOCALDEROPA MANAGED SETTINGS.*?# END CRM-LOCALDEROPA MANAGED SETTINGS\r?\n?', '')
 
 if ($PSCmdlet.ShouldProcess($configPath, 'Aplicar configuración optimizada del CRM')) {
-  Set-Content -LiteralPath $configPath -Value ($current.TrimEnd() + $managedConfig) -Encoding UTF8
-  Set-Content -LiteralPath $hbaPath -Value @(
+  $utf8 = New-Object Text.UTF8Encoding($false)
+  [IO.File]::WriteAllText($configPath, ($current.TrimEnd() + $managedConfig), $utf8)
+  $hba = @(
     '# Managed by Caracola. PostgreSQL is local-only.'
     'local   all             all                                     scram-sha-256'
     'host    all             all             127.0.0.1/32            scram-sha-256'
     'host    all             all             ::1/128                 scram-sha-256'
-  ) -Encoding UTF8
+  ) -join [Environment]::NewLine
+  [IO.File]::WriteAllText($hbaPath, ($hba + [Environment]::NewLine), $utf8)
 }
 
 Write-Host "Perfil aplicado para $memoryGb GB de RAM. Reiniciá el servicio PostgreSQL para activar los cambios." -ForegroundColor Green

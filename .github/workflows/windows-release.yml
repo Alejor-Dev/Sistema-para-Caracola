@@ -54,18 +54,23 @@ jobs:
           npm install --no-save --omit=dev prisma@6.12.0
           $payload = Join-Path $env:RUNNER_TEMP "crm-$version"
           New-Item -ItemType Directory -Path $payload -Force | Out-Null
-          Copy-Item apps,packages,infrastructure,node_modules,package.json,package-lock.json -Destination $payload -Recurse -Force
+          New-Item -ItemType Directory -Path (Join-Path $payload 'apps') -Force | Out-Null
+          Copy-Item apps/api,apps/web -Destination (Join-Path $payload 'apps') -Recurse -Force
+          Copy-Item packages,infrastructure,node_modules,package.json,package-lock.json -Destination $payload -Recurse -Force
+          $nextCache = Join-Path $payload 'apps/web/.next/cache'
+          if (Test-Path -LiteralPath $nextCache) { Remove-Item -LiteralPath $nextCache -Recurse -Force }
           New-Item -ItemType Directory -Path (Join-Path $payload 'runtime'),(Join-Path $payload 'tools') -Force | Out-Null
           Copy-Item (Get-Command node.exe).Source (Join-Path $payload 'runtime\node.exe')
           Invoke-WebRequest 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe' -OutFile (Join-Path $payload 'tools\WinSW-x64.exe')
           Invoke-WebRequest 'https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_windows_amd64.zip' -OutFile (Join-Path $env:RUNNER_TEMP 'restic.zip')
           Expand-Archive (Join-Path $env:RUNNER_TEMP 'restic.zip') -DestinationPath (Join-Path $payload 'tools')
           Move-Item (Join-Path $payload 'tools\restic_0.17.3_windows_amd64.exe') (Join-Path $payload 'tools\restic.exe')
-          $pgUrl = 'https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64.exe'
-          $pgInstaller = Join-Path $payload 'tools\postgresql-17.6-1-windows-x64.exe'
+          $pgUrl = 'https://get.enterprisedb.com/postgresql/postgresql-17.11-1-windows-x64.exe'
+          $pgInstaller = Join-Path $payload 'tools\postgresql-17.11-1-windows-x64.exe'
           Invoke-WebRequest $pgUrl -OutFile $pgInstaller
+          if ((Get-AuthenticodeSignature -LiteralPath $pgInstaller).Status -ne 'Valid') { throw 'PostgreSQL installer signature is invalid.' }
           $pgHash = (Get-FileHash -LiteralPath $pgInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
-          [ordered]@{ url = $pgUrl; sha256 = $pgHash; localFile = 'tools\postgresql-17.6-1-windows-x64.exe' } |
+          [ordered]@{ url = $pgUrl; sha256 = $pgHash; localFile = 'tools\postgresql-17.11-1-windows-x64.exe' } |
             ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $payload 'infrastructure\windows\config\postgres-source.json')
           "PAYLOAD=$payload" | Out-File -FilePath $env:GITHUB_ENV -Append
           "CLEAN_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -151,3 +156,26 @@ jobs:
             Caracola-Setup-${{ env.CLEAN_VERSION }}.exe
             Caracola-Setup-${{ env.CLEAN_VERSION }}.exe.sha256
           if-no-files-found: error
+
+  smoke-install:
+    needs: verify-and-package
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CRM-LocalDeRopa-AllInOne-${{ inputs.version || github.ref_name }}
+          path: installer
+      - name: Install on clean Windows
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem installer -Filter 'Caracola-Setup-*.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'Installer artifact was not found.' }
+          $process = Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed with exit code $($process.ExitCode)." }
+          foreach ($name in @('postgresql-x64-17-caracola', 'CrmApi', 'CrmWeb')) {
+            if ((Get-Service -Name $name).Status -ne 'Running') { throw "$name is not running." }
+          }
+          Invoke-WebRequest 'http://127.0.0.1:4000/api/v1/health' -UseBasicParsing | Out-Null
+          Invoke-WebRequest 'http://127.0.0.1:3000' -UseBasicParsing | Out-Null
+          if (-not (Test-Path 'C:\Program Files\Caracola\Caracola.exe')) { throw 'Desktop executable is missing.' }

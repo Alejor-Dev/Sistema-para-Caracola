@@ -4,9 +4,9 @@ param(
   [Parameter(Mandatory)][string]$InstallerPath,
   [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedSha256,
   [Security.SecureString]$SuperPassword,
-  [string]$ServiceName = 'postgresql-x64-17',
-  [int]$ServerPort = 5432,
-  [string]$Prefix = 'C:\Program Files\PostgreSQL\17',
+  [string]$ServiceName = 'postgresql-x64-17-caracola',
+  [int]$ServerPort = 5433,
+  [string]$Prefix = 'C:\Program Files\PostgreSQL\17-Caracola',
   [string]$DataRoot = 'C:\ProgramData\Caracola',
   [int]$TimeoutSeconds = 600
 )
@@ -40,13 +40,15 @@ if (-not $SuperPassword -or $SuperPassword.Length -eq 0) {
 }
 
 $superPlain = $null
-$dataDirectory = Join-Path $Prefix 'data'
+$dataDirectory = Join-Path $DataRoot 'PostgreSQL\data'
 $arguments = @('--mode unattended')
 $arguments += '--unattendedmodeui none'
 $arguments += '--enable-components server,commandlinetools'
 $arguments += '--superaccount postgres'
 $superPlain = Convert-CrmSecureStringToPlain $SuperPassword
 $arguments += "--superpassword $superPlain"
+$arguments += '--serviceaccount caracola_pg'
+$arguments += "--servicepassword $superPlain"
 $arguments += "--serverport $ServerPort"
 $arguments += "--servicename $ServiceName"
 $arguments += "--prefix `"$Prefix`""
