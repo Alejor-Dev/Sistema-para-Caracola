@@ -67,7 +67,8 @@ SectionEnd
 Section "Servidor (PostgreSQL + Caracola)" SEC_SERVER
   IfFileExists "$INSTDIR\${CRMPAYLOADZIP_BASENAME}" 0 +2
   Goto +3
-  MessageBox MB_OK|MB_ICONSTOP "Falta el paquete de datos del servidor. Reinstale el programa."
+  MessageBox MB_OK|MB_ICONSTOP "Falta el paquete de datos del servidor. Reinstale el programa." /SD IDOK
+  SetErrorLevel 1
   Abort
 
   DetailPrint "Extrayendo paquete del servidor..."
@@ -75,20 +76,23 @@ Section "Servidor (PostgreSQL + Caracola)" SEC_SERVER
   nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\Extract-CaracolaPayload.ps1" -PayloadZip "$INSTDIR\${CRMPAYLOADZIP_BASENAME}" -BootstrapDir "$INSTDIR\${BOOTSTRAP_DIR}"'
   Pop $0
   ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "No se pudo extraer el paquete del servidor. Error $0."
+    MessageBox MB_OK|MB_ICONSTOP "No se pudo extraer el paquete del servidor. Error $0." /SD IDOK
+    SetErrorLevel 1
     Abort
   ${EndIf}
 
   IfFileExists "$INSTDIR\${BOOTSTRAP_DIR}\release-manifest.json" 0 +2
   Goto +3
-  MessageBox MB_OK|MB_ICONSTOP "El paquete del servidor está incompleto o dañado."
+  MessageBox MB_OK|MB_ICONSTOP "El paquete del servidor está incompleto o dañado." /SD IDOK
+  SetErrorLevel 1
   Abort
 
   DetailPrint "Instalando PostgreSQL y Caracola (puede tardar varios minutos)..."
   nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\${BOOTSTRAP_DIR}\infrastructure\windows\installer\Complete-CrmInstall.ps1" -ReleasePath "$INSTDIR\${BOOTSTRAP_DIR}"'
   Pop $0
   ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "La instalación del servidor no se completó. Revise los logs en C:\ProgramData\Caracola\logs."
+    MessageBox MB_OK|MB_ICONSTOP "La instalación del servidor no se completó. Revise los logs en C:\ProgramData\Caracola\logs." /SD IDOK
+    SetErrorLevel 1
     Abort
   ${EndIf}
 

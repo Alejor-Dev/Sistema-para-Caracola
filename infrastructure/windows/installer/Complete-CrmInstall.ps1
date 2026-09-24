@@ -26,6 +26,14 @@ $version = [string]$manifest.version
 $dataRoot = 'C:\ProgramData\Caracola'
 $installRoot = 'C:\Program Files\Caracola'
 
+trap {
+    $errorPath = Join-Path $dataRoot 'install-error.log'
+    New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
+    $message = [regex]::Replace($_.Exception.Message, '(?i)(--(?:super|service)password\s+)\S+', '$1[redacted]')
+    ('{0:u} {1}' -f (Get-Date), $message) | Add-Content -LiteralPath $errorPath -Encoding UTF8
+    break
+}
+
 function Write-Step {
     param([Parameter(Mandatory)][string]$Message)
     $progressPath = Join-Path $dataRoot 'install-progress.log'
