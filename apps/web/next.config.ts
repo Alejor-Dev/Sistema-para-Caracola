@@ -1,8 +1,11 @@
 import type { NextConfig } from 'next';
+import path from 'node:path';
 
 const internalApiUrl = (process.env.INTERNAL_API_URL ?? 'http://127.0.0.1:4000').replace(/\/$/, '');
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ['@crm/contracts'],

@@ -41,6 +41,7 @@ if (-not $SuperPassword -or $SuperPassword.Length -eq 0) {
 
 $superPlain = $null
 $dataDirectory = Join-Path $DataRoot 'PostgreSQL\data'
+New-Item -ItemType Directory -Path (Split-Path -Parent $dataDirectory) -Force | Out-Null
 $arguments = @('--mode unattended')
 $arguments += '--unattendedmodeui none'
 $arguments += '--enable-components server,commandlinetools'
@@ -83,6 +84,7 @@ if (-not (Test-Path -LiteralPath $psql -PathType Leaf)) {
 
 $secretPath = Join-Path $DataRoot 'secrets\postgres-super.dpapi'
 Protect-CrmSecret -Secret $SuperPassword -Path $secretPath
-& icacls.exe $secretPath /inheritance:r /grant:r 'SYSTEM:F' 'Administrators:F' | Out-Null
+& icacls.exe $secretPath /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'No se pudieron proteger los permisos de PostgreSQL.' }
 
 Write-Host "PostgreSQL $ServiceName instalado en $Prefix." -ForegroundColor Green

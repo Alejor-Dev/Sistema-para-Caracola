@@ -2,6 +2,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$ReleasePath,
+    [string]$PostgresInstaller,
+    [switch]$UsePreparedRelease,
     [string]$ConfigPath = 'C:\ProgramData\Caracola\config\production.json',
     [Security.SecureString]$SuperPassword,
     [Security.SecureString]$DatabasePassword,
@@ -98,6 +100,7 @@ if (-not (Test-Path -LiteralPath $pgSource)) { throw 'postgres-source.json is mi
 $pgMeta = Get-Content -LiteralPath $pgSource -Raw | ConvertFrom-Json
 if (-not $pgMeta.sha256) { throw 'postgres-source.json has no sha256 pin.' }
 $pgInstaller = Join-Path $releaseRoot ($pgMeta.localFile -replace '/', '\')
+if ($PostgresInstaller) { $pgInstaller = $PostgresInstaller }
 
 $installPostgres = Join-Path $windowsRoot 'postgresql\Install-Postgres.ps1'
 & $installPostgres -InstallerPath $pgInstaller -ExpectedSha256 $pgMeta.sha256 -SuperPassword $SuperPassword -ServiceName $postgresService -ServerPort $postgresPort -Prefix $pgVersionDir -DataRoot $dataRoot
@@ -146,9 +149,14 @@ $config.backup.pgDumpPath = Join-Path $pgBinDir 'pg_dump.exe'
 $config.backup.pgRestorePath = Join-Path $pgBinDir 'pg_restore.exe'
 $config.backup.createdbPath = Join-Path $pgBinDir 'createdb.exe'
 Write-CrmJsonAtomically -Path $configTarget -Value $config
-$installArguments = @('-ReleasePath', $releaseRoot, '-DatabasePassword', $DatabasePassword, '-ResticPassword', $ResticPassword)
-if ($SkipDatabaseMigration) { $installArguments += '-SkipDatabaseMigration' }
-if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { $installArguments += '-ConfigPath', $ConfigPath }
+$installArguments = @{
+    ReleasePath = $releaseRoot
+    DatabasePassword = $DatabasePassword
+    ResticPassword = $ResticPassword
+    UsePreparedRelease = $UsePreparedRelease
+    SkipDatabaseMigration = $SkipDatabaseMigration
+}
+if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { $installArguments.ConfigPath = $ConfigPath }
 & $install @installArguments
 
 Write-Step 'WebView2 (necesario para la ventana de escritorio)'

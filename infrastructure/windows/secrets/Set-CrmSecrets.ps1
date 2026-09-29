@@ -32,7 +32,7 @@ Protect-CrmSecret -Secret $DatabasePassword -Path $config.database.passwordSecre
 Protect-CrmSecret -Secret $ResticPassword -Path $config.backup.passwordSecret
 
 foreach ($path in @($config.database.passwordSecret, $config.backup.passwordSecret)) {
-  & icacls.exe $path /inheritance:r /grant:r 'SYSTEM:F' 'Administrators:F' | Out-Null
+  & icacls.exe $path /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "No se pudieron restringir los permisos de $path" }
 }
 Write-Host 'Secretos protegidos con DPAPI de máquina y ACL restringida.' -ForegroundColor Green

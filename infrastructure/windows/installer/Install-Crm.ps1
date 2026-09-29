@@ -5,7 +5,8 @@ param(
     [string]$ConfigPath,
     [Security.SecureString]$DatabasePassword,
     [Security.SecureString]$ResticPassword,
-    [switch]$SkipDatabaseMigration
+    [switch]$SkipDatabaseMigration,
+    [switch]$UsePreparedRelease
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,9 +43,15 @@ if (-not $PSCmdlet.ShouldProcess($installRoot, "Install CRM version $($manifest.
 @($installRoot, $dataRoot, (Split-Path $configTarget), (Join-Path $dataRoot 'secrets'), (Join-Path $dataRoot 'state'), (Join-Path $dataRoot 'backups')) |
     ForEach-Object { New-Item -ItemType Directory -Path $_ -Force | Out-Null }
 
-if (Test-Path -LiteralPath $versionRoot) { throw "Version already installed: $versionRoot" }
-New-Item -ItemType Directory -Path $versionRoot -Force | Out-Null
-Copy-Item -Path (Join-Path $releaseRoot '*') -Destination $versionRoot -Recurse -Force
+if ($UsePreparedRelease) {
+    if ($releaseRoot.TrimEnd('\') -ine $versionRoot.TrimEnd('\')) {
+        throw 'Prepared release must be located in the exact version directory.'
+    }
+} else {
+    if (Test-Path -LiteralPath $versionRoot) { throw "Version already installed: $versionRoot" }
+    New-Item -ItemType Directory -Path $versionRoot -Force | Out-Null
+    Copy-Item -Path (Join-Path $releaseRoot '*') -Destination $versionRoot -Recurse -Force
+}
 
 if (-not (Test-Path -LiteralPath $configTarget)) {
     $sourceConfig = if ($ConfigPath -and $ConfigPath -ne $configTarget) { $ConfigPath } else { Join-Path $versionRoot 'infrastructure\windows\config\production.example.json' }

@@ -1,113 +1,101 @@
 Unicode true
-
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
-
-!ifndef PRODUCT_VERSION
-  !define PRODUCT_VERSION "0.2.0"
-!endif
-!ifndef COMPANY_NAME
-  !define COMPANY_NAME "Caracola"
-!endif
-!ifndef CRMPAYLOADZIP_BASENAME
-  !define CRMPAYLOADZIP_BASENAME "payload.zip"
-!endif
-!ifndef BOOTSTRAP_DIR
-  !define BOOTSTRAP_DIR "bootstrap"
-!endif
-
+!include "x64.nsh"
 !define PRODUCT_NAME "Caracola"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Caracola"
-
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "${OUTFILE}"
-InstallDir "$PROGRAMFILES64\${PRODUCT_NAME}"
-InstallDirRegKey HKLM "${UNINSTALL_KEY}" "InstallLocation"
+InstallDir "$PROGRAMFILES64\Caracola"
 RequestExecutionLevel admin
-
-SetCompressor lzma
-
+SetCompressor /SOLID lzma
+SetCompressorDictSize 32
+ShowInstDetails show
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Caracola.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Iniciar Caracola"
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "Spanish"
-!insertmacro MUI_LANGUAGE "English"
 
-Section "Caracola" SEC_APP
+Function .onInit
+  ${IfNot} ${RunningX64}
+    MessageBox MB_OK|MB_ICONSTOP "Caracola requiere Windows de 64 bits." /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
+  SetRegView 64
+  SetShellVarContext all
+  ${DisableX64FSRedirection}
+  StrCpy $INSTDIR "$PROGRAMFILES64\Caracola"
+  ${If} ${FileExists} "$APPDATA\Caracola\config\production.json"
+    MessageBox MB_OK|MB_ICONSTOP "Ya hay una configuracion de Caracola. Se conservan sus datos. Use el procedimiento de actualizacion." /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
+FunctionEnd
+
+Section "Caracola completa"
+  CreateDirectory "$APPDATA\Caracola"
+  FileOpen $0 "$APPDATA\Caracola\install-progress.log" w
+  FileWrite $0 "Inicio de instalacion ${PRODUCT_VERSION}$\r$\n"
+  FileClose $0
+  Delete "$APPDATA\Caracola\install-error.log"
+  DetailPrint "Instalando archivos de Caracola..."
+  SetOutPath "$INSTDIR\versions\${PRODUCT_VERSION}"
+  File /r "${PAYLOAD}\*"
+  ${IfNot} ${FileExists} "$INSTDIR\versions\${PRODUCT_VERSION}\release-manifest.json"
+    MessageBox MB_OK|MB_ICONSTOP "El paquete de Caracola esta incompleto." /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
   SetOutPath "$INSTDIR"
-
-  SetCompress auto
   File /oname=Caracola.exe "${DESKTOPEXE}"
-  File "/oname=Extract-CaracolaPayload.ps1" "Extract-CaracolaPayload.ps1"
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
   SetCompress off
-  File /oname=payload.zip "${CRMPAYLOADZIP}"
+  File /oname=postgresql.exe "${PGINSTALLER}"
   SetCompress auto
-
+  DetailPrint "Configurando PostgreSQL y Caracola. Espere unos minutos..."
+  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\versions\${PRODUCT_VERSION}\infrastructure\windows\installer\Invoke-CaracolaSetup.ps1" -ReleasePath "$INSTDIR\versions\${PRODUCT_VERSION}" -PostgresInstaller "$PLUGINSDIR\postgresql.exe"'
+  Pop $0
+  ${If} $0 != 0
+    MessageBox MB_OK|MB_ICONSTOP "No se completo la instalacion. El motivo esta en C:\ProgramData\Caracola\install-error.log y setup.log." /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
+  SetOutPath "$INSTDIR"
   CreateShortCut "$SMPROGRAMS\Caracola.lnk" "$INSTDIR\Caracola.exe"
   CreateShortCut "$DESKTOP\Caracola.lnk" "$INSTDIR\Caracola.exe"
-
   WriteUninstaller "$INSTDIR\Uninstall-Caracola.exe"
-
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
-  WriteRegStr HKLM "${UNINSTALL_KEY}" "Publisher" "${COMPANY_NAME}"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "Publisher" "Caracola"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\Caracola.exe"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall-Caracola.exe$\""
   WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoRepair" 1
-SectionEnd
-
-Section "Servidor (PostgreSQL + Caracola)" SEC_SERVER
-  IfFileExists "$INSTDIR\${CRMPAYLOADZIP_BASENAME}" 0 +2
-  Goto +3
-  MessageBox MB_OK|MB_ICONSTOP "Falta el paquete de datos del servidor. Reinstale el programa." /SD IDOK
-  SetErrorLevel 1
-  Abort
-
-  DetailPrint "Extrayendo paquete del servidor..."
-  CreateDirectory "$INSTDIR\${BOOTSTRAP_DIR}"
-  nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\Extract-CaracolaPayload.ps1" -PayloadZip "$INSTDIR\${CRMPAYLOADZIP_BASENAME}" -BootstrapDir "$INSTDIR\${BOOTSTRAP_DIR}"'
-  Pop $0
-  ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "No se pudo extraer el paquete del servidor. Error $0." /SD IDOK
-    SetErrorLevel 1
-    Abort
-  ${EndIf}
-
-  IfFileExists "$INSTDIR\${BOOTSTRAP_DIR}\release-manifest.json" 0 +2
-  Goto +3
-  MessageBox MB_OK|MB_ICONSTOP "El paquete del servidor está incompleto o dañado." /SD IDOK
-  SetErrorLevel 1
-  Abort
-
-  DetailPrint "Instalando PostgreSQL y Caracola (puede tardar varios minutos)..."
-  nsExec::ExecToLog 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\${BOOTSTRAP_DIR}\infrastructure\windows\installer\Complete-CrmInstall.ps1" -ReleasePath "$INSTDIR\${BOOTSTRAP_DIR}"'
-  Pop $0
-  ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "La instalación del servidor no se completó. Revise los logs en C:\ProgramData\Caracola\logs." /SD IDOK
-    SetErrorLevel 1
-    Abort
-  ${EndIf}
-
-  DetailPrint "Finalizando instalación..."
-  Delete "$INSTDIR\${CRMPAYLOADZIP_BASENAME}"
-  Delete "$INSTDIR\Extract-CaracolaPayload.ps1"
-  RMDir /r "$INSTDIR\${BOOTSTRAP_DIR}"
+  DetailPrint "Caracola instalada y lista."
 SectionEnd
 
 Section "Uninstall"
-  Delete "$INSTDIR\Caracola.exe"
-  Delete "$INSTDIR\Extract-CaracolaPayload.ps1"
-  Delete "$INSTDIR\Uninstall-Caracola.exe"
-  Delete "$SMPROGRAMS\Caracola.lnk"
+  SetRegView 64
+  SetShellVarContext all
+  ${DisableX64FSRedirection}
+  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\current\infrastructure\windows\installer\Uninstall-Crm.ps1" -Confirm:$false'
+  Pop $0
+  ${If} $0 != 0
+    MessageBox MB_OK|MB_ICONSTOP "No se pudieron desinstalar los servicios. Los datos se conservaron." /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
   Delete "$DESKTOP\Caracola.lnk"
+  Delete "$SMPROGRAMS\Caracola.lnk"
+  Delete "$INSTDIR\Uninstall-Caracola.exe"
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
   RMDir "$INSTDIR"
 SectionEnd

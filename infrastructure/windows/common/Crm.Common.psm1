@@ -39,9 +39,11 @@ function Invoke-CrmProcess {
   $process = [Diagnostics.Process]::new()
   $process.StartInfo = $start
   [void]$process.Start()
-  $stdout = $process.StandardOutput.ReadToEnd()
-  $stderr = $process.StandardError.ReadToEnd()
+  $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+  $stderrTask = $process.StandardError.ReadToEndAsync()
   $process.WaitForExit()
+  $stdout = $stdoutTask.GetAwaiter().GetResult()
+  $stderr = $stderrTask.GetAwaiter().GetResult()
   if ($process.ExitCode -ne 0 -and -not $AllowFailure) {
     throw "$FilePath finalizó con código $($process.ExitCode): $stderr"
   }
@@ -93,12 +95,9 @@ function Test-CrmFileHash {
 function New-CrmRandomSecret {
   param([Parameter(Mandatory)][string]$Suffix = '-U0!')
   $random = New-Object byte[] 24
-  [Security.Cryptography.RandomNumberGenerator]::Fill($random)
-  $builder = [Text.StringBuilder]::new()
-  foreach ($byte in $random) {
-    if (($byte -ge 65 -and $byte -le 90) -or ($byte -ge 97 -and $byte -le 122)) { [void]$builder.Append([char]$byte) }
-  }
-  $plain = $builder.ToString() + (Get-Date -Format 'yyMMddHHmmss') + $Suffix
+  $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $generator.GetBytes($random) } finally { $generator.Dispose() }
+  $plain = ([BitConverter]::ToString($random).Replace('-', '')) + $Suffix
   $secure = [Security.SecureString]::new()
   foreach ($char in $plain.ToCharArray()) { $secure.AppendChar($char) }
   return $secure

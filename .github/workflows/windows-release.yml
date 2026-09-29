@@ -1,201 +1,133 @@
 name: Windows release
-
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Semantic version (for example 0.2.0)
+        description: Installer version
         required: true
-        default: 0.2.0
-  push:
-    tags:
-      - 'v*'
-
+        default: 0.2.1
 permissions:
   contents: read
-
 jobs:
   verify-and-package:
     runs-on: windows-2022
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     env:
-      RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
       CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
       CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify application
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: windows-rust-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+      - id: version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:INPUT_VERSION -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid version.' }
+          "version=$env:INPUT_VERSION" >> $env:GITHUB_OUTPUT
+          "RELEASE_VERSION=$env:INPUT_VERSION" >> $env:GITHUB_ENV
+      - name: Verify and build application
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm ci
+          npm run db:generate
+          npm run build --workspace=@crm/contracts
           npm run typecheck
           npm run test
           npm run build --workspace=@crm/api
           npm run build --workspace=@crm/web
-          ./infrastructure/windows/installer/Test-Phase7.ps1
-
-      - name: Build Windows desktop shell
-        run: npm run build --workspace=@crm/desktop
-
-      - name: Prepare production payload
+          powershell.exe -NoProfile -File infrastructure/windows/installer/Test-Phase7.ps1
+          powershell.exe -NoProfile -File infrastructure/windows/installer/Test-WindowsRuntime.ps1
+          npm exec --workspace=@crm/desktop -- tauri build --no-bundle
+      - name: Prepare runtime only
         shell: pwsh
         run: |
-          $version = $env:RELEASE_VERSION.TrimStart('v')
-          npm prune --omit=dev
-          npm install --no-save --omit=dev prisma@6.12.0
-          $payload = Join-Path $env:RUNNER_TEMP "crm-$version"
-          New-Item -ItemType Directory -Path $payload -Force | Out-Null
-          New-Item -ItemType Directory -Path (Join-Path $payload 'apps') -Force | Out-Null
-          Copy-Item apps/api,apps/web -Destination (Join-Path $payload 'apps') -Recurse -Force
-          Copy-Item packages,infrastructure,node_modules,package.json,package-lock.json -Destination $payload -Recurse -Force
-          $nextCache = Join-Path $payload 'apps/web/.next/cache'
-          if (Test-Path -LiteralPath $nextCache) { Remove-Item -LiteralPath $nextCache -Recurse -Force }
-          New-Item -ItemType Directory -Path (Join-Path $payload 'runtime'),(Join-Path $payload 'tools') -Force | Out-Null
-          Copy-Item (Get-Command node.exe).Source (Join-Path $payload 'runtime\node.exe')
-          Invoke-WebRequest 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe' -OutFile (Join-Path $payload 'tools\WinSW-x64.exe')
-          Invoke-WebRequest 'https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_windows_amd64.zip' -OutFile (Join-Path $env:RUNNER_TEMP 'restic.zip')
-          Expand-Archive (Join-Path $env:RUNNER_TEMP 'restic.zip') -DestinationPath (Join-Path $payload 'tools')
-          Move-Item (Join-Path $payload 'tools\restic_0.17.3_windows_amd64.exe') (Join-Path $payload 'tools\restic.exe')
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $payload = Join-Path $env:RUNNER_TEMP "caracola-$env:RELEASE_VERSION"
+          ./infrastructure/windows/release/New-CrmPayload.ps1 -Destination $payload
+          Invoke-WebRequest 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe' -OutFile "$payload\tools\WinSW-x64.exe"
+          Invoke-WebRequest 'https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_windows_amd64.zip' -OutFile "$env:RUNNER_TEMP\restic.zip"
+          Expand-Archive "$env:RUNNER_TEMP\restic.zip" "$env:RUNNER_TEMP\restic"
+          Copy-Item "$env:RUNNER_TEMP\restic\restic_0.17.3_windows_amd64.exe" "$payload\tools\restic.exe"
           $pgUrl = 'https://get.enterprisedb.com/postgresql/postgresql-17.11-1-windows-x64.exe'
-          $pgInstaller = Join-Path $payload 'tools\postgresql-17.11-1-windows-x64.exe'
+          $pgInstaller = Join-Path $env:RUNNER_TEMP 'postgresql.exe'
           Invoke-WebRequest $pgUrl -OutFile $pgInstaller
-          if ((Get-AuthenticodeSignature -LiteralPath $pgInstaller).Status -ne 'Valid') { throw 'PostgreSQL installer signature is invalid.' }
-          $pgHash = (Get-FileHash -LiteralPath $pgInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
-          [ordered]@{ url = $pgUrl; sha256 = $pgHash; localFile = 'tools\postgresql-17.11-1-windows-x64.exe' } |
-            ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $payload 'infrastructure\windows\config\postgres-source.json')
-          "PAYLOAD=$payload" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "CLEAN_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "PG_SHA256=$pgHash" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Create verified release archive
+          if ((Get-AuthenticodeSignature $pgInstaller).Status -ne 'Valid') { throw 'PostgreSQL signature is invalid.' }
+          $hash = (Get-FileHash $pgInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          @{ url = $pgUrl; sha256 = $hash; localFile = 'tools/postgresql.exe' } |
+            ConvertTo-Json | Set-Content "$payload\infrastructure\windows\config\postgres-source.json" -Encoding utf8
+          ./infrastructure/windows/release/New-CrmReleaseManifest.ps1 -PayloadPath $payload -Version $env:RELEASE_VERSION
+          "PAYLOAD=$payload" >> $env:GITHUB_ENV
+          "PGINSTALLER=$pgInstaller" >> $env:GITHUB_ENV
+      - name: Compile single installer
         shell: pwsh
         run: |
-          ./infrastructure/windows/release/New-CrmReleaseManifest.ps1 -PayloadPath $env:PAYLOAD -Version $env:CLEAN_VERSION
-          Compress-Archive -Path (Join-Path $env:PAYLOAD '*') -DestinationPath "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -CompressionLevel Optimal
-          Get-FileHash "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLowerInvariant())  CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" } |
-            Set-Content "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip.sha256"
-          "PAYLOAD_ZIP=$(Resolve-Path "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip")" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "DESKTOP_EXE=$(Resolve-Path 'apps/desktop/src-tauri/target/release/crm-local-de-ropa.exe')" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "ALL_IN_ONE=$(Join-Path $env:RUNNER_TEMP "Caracola-Setup-$env:CLEAN_VERSION.exe")" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Build all-in-one installer (PostgreSQL + Caracola)
-        shell: pwsh
-        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           choco install nsis -y --no-progress
-          $makensis = 'C:\Program Files (x86)\NSIS\makensis.exe'
-          if (-not (Test-Path -LiteralPath $makensis)) { throw 'makensis.exe was not found after choco install.' }
-          & $makensis "/DPRODUCT_VERSION=$env:CLEAN_VERSION" "/DOUTFILE=$env:ALL_IN_ONE" "/DDESKTOPEXE=$env:DESKTOP_EXE" "/DCRMPAYLOADZIP=$env:PAYLOAD_ZIP" "/DCRMPAYLOADZIP_BASENAME=payload.zip" "/DCOMPANY_NAME=Caracola" 'infrastructure/windows/installer/packaging/Caracola-Setup.nsi'
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $env:ALL_IN_ONE)) { throw 'Failed to build the all-in-one installer.' }
-          Move-Item $env:ALL_IN_ONE "Caracola-Setup-$env:CLEAN_VERSION.exe"
-          "ALL_IN_ONE=$(Resolve-Path "Caracola-Setup-$env:CLEAN_VERSION.exe")" | Out-File -FilePath $env:GITHUB_ENV -Append
-          Get-FileHash "Caracola-Setup-$env:CLEAN_VERSION.exe" -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLowerInvariant())  Caracola-Setup-$env:CLEAN_VERSION.exe" } |
-            Set-Content "Caracola-Setup-$env:CLEAN_VERSION.exe.sha256"
-
-      - name: Sign Windows executables
-        if: env.CERTIFICATE_BASE64 != ''
-        shell: pwsh
-        run: |
-          $pfx = Join-Path $env:RUNNER_TEMP 'code-signing.pfx'
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
-          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -Recurse |
-            Where-Object FullName -Match '\\x64\\' | Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $signtool) { throw 'signtool.exe was not found.' }
-          $executables = @(Get-ChildItem $env:PAYLOAD -Filter *.exe -Recurse)
-          $executables += @(Get-ChildItem 'apps/desktop/src-tauri/target/release/bundle/nsis' -Filter *.exe)
-          if (Test-Path -LiteralPath $env:ALL_IN_ONE) { $executables += Get-Item -LiteralPath $env:ALL_IN_ONE }
-          $executables += @(Get-ChildItem 'apps/desktop/src-tauri/target/release' -Filter 'crm-local-de-ropa.exe')
-          $executables | ForEach-Object {
-            & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $pfx /p $env:CERTIFICATE_PASSWORD $_.FullName
-            if ($LASTEXITCODE -ne 0) { throw "Signing failed: $($_.FullName)" }
+          $desktop = (Resolve-Path 'apps/desktop/src-tauri/target/release/crm-local-de-ropa.exe').Path
+          $output = Join-Path $env:GITHUB_WORKSPACE "Caracola-Setup-$env:RELEASE_VERSION.exe"
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DPRODUCT_VERSION=$env:RELEASE_VERSION" "/DOUTFILE=$output" "/DDESKTOPEXE=$desktop" "/DPAYLOAD=$env:PAYLOAD" "/DPGINSTALLER=$env:PGINSTALLER" 'infrastructure/windows/installer/packaging/Caracola-Setup.nsi'
+          if ($env:CERTIFICATE_BASE64) {
+            $pfx = Join-Path $env:RUNNER_TEMP 'code-signing.pfx'
+            try {
+              [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+              $sign = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -Recurse |
+                Where-Object FullName -Match '\\x64\\' | Sort-Object FullName -Descending | Select-Object -First 1
+              & $sign.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $pfx /p $env:CERTIFICATE_PASSWORD $output
+            } finally { Remove-Item -LiteralPath $pfx -Force -ErrorAction SilentlyContinue }
           }
-          Remove-Item $pfx -Force
-
-      - name: Refresh hashes after signing
-        if: env.CERTIFICATE_BASE64 != ''
-        shell: pwsh
-        run: |
-          Get-FileHash "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLowerInvariant())  CRM-LocalDeRopa-$env:CLEAN_VERSION.zip" } |
-            Set-Content "CRM-LocalDeRopa-$env:CLEAN_VERSION.zip.sha256"
-          Get-FileHash "Caracola-Setup-$env:CLEAN_VERSION.exe" -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLowerInvariant())  Caracola-Setup-$env:CLEAN_VERSION.exe" } |
-            Set-Content "Caracola-Setup-$env:CLEAN_VERSION.exe.sha256"
-
-      - name: Upload server package
-        uses: actions/upload-artifact@v4
+          $hash = (Get-FileHash $output -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $output -Leaf)" | Set-Content "$output.sha256"
+          Write-Host "Installer bytes: $((Get-Item $output).Length)"
+      - uses: actions/upload-artifact@v4
         with:
-          name: CRM-LocalDeRopa-${{ env.CLEAN_VERSION }}
+          name: Caracola-${{ inputs.version }}
+          compression-level: 0
           path: |
-            CRM-LocalDeRopa-*.zip
-            CRM-LocalDeRopa-*.zip.sha256
+            Caracola-Setup-*.exe
+            Caracola-Setup-*.exe.sha256
           if-no-files-found: error
-
-      - name: Upload desktop installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: CRM-LocalDeRopa-Desktop-${{ env.CLEAN_VERSION }}
-          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
-          if-no-files-found: error
-
-      - name: Upload all-in-one installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: CRM-LocalDeRopa-AllInOne-${{ env.CLEAN_VERSION }}
-          path: |
-            Caracola-Setup-${{ env.CLEAN_VERSION }}.exe
-            Caracola-Setup-${{ env.CLEAN_VERSION }}.exe.sha256
-          if-no-files-found: error
-
   smoke-install:
     needs: verify-and-package
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 25
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: CRM-LocalDeRopa-AllInOne-${{ inputs.version || github.ref_name }}
+          name: Caracola-${{ needs.verify-and-package.outputs.version }}
           path: installer
-      - name: Install on clean Windows
-        shell: pwsh
+      - name: Install, initialize and restart on clean Windows
+        shell: powershell
         run: |
+          $ErrorActionPreference = 'Stop'
           $setup = Get-ChildItem installer -Filter 'Caracola-Setup-*.exe' | Select-Object -First 1
-          if (-not $setup) { throw 'Installer artifact was not found.' }
-          $process = Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru
-          $progressPath = 'C:\ProgramData\Caracola\install-progress.log'
-          $lastProgress = ''
-          for ($attempt = 0; $attempt -lt 40; $attempt++) {
-            if ($process.WaitForExit(30000)) { break }
-            if (Test-Path -LiteralPath $progressPath) {
-              $progress = Get-Content -LiteralPath $progressPath -Tail 1
-              if ($progress -ne $lastProgress) { Write-Host "Installer stage: $progress"; $lastProgress = $progress }
-            }
-            $active = Get-Process -Name 'Caracola-Setup-0.2.0','postgresql-17.11-1-windows-x64','powershell','node' -ErrorAction SilentlyContinue |
-              Select-Object ProcessName,Id,CPU
-            Write-Host ($active | ConvertTo-Json -Compress)
-          }
-          if (-not $process.HasExited) { throw 'Installer did not finish within 20 minutes.' }
-          $errorPath = 'C:\ProgramData\Caracola\install-error.log'
-          if (Test-Path -LiteralPath $errorPath) {
-            Get-Content -LiteralPath $errorPath -Tail 10
-            throw 'The installer recorded a failure.'
-          }
-          if ($process.ExitCode -ne 0) {
-            throw "Installer failed with exit code $($process.ExitCode)."
-          }
-          foreach ($name in @('postgresql-x64-17-caracola', 'CrmApi', 'CrmWeb')) {
-            if ((Get-Service -Name $name).Status -ne 'Running') { throw "$name is not running." }
-          }
-          Invoke-WebRequest 'http://127.0.0.1:4000/api/v1/health' -UseBasicParsing | Out-Null
-          Invoke-WebRequest 'http://127.0.0.1:3000' -UseBasicParsing | Out-Null
-          if (-not (Test-Path 'C:\Program Files\Caracola\Caracola.exe')) { throw 'Desktop executable is missing.' }
+          ./infrastructure/windows/installer/Test-InstalledCaracola.ps1 -InstallerPath $setup.FullName
+      - name: Preserve installer diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Caracola-installation-diagnostics
+          path: |
+            C:\ProgramData\Caracola\setup.log
+            C:\ProgramData\Caracola\install-*.log
+            C:\ProgramData\Caracola\install-success.json
+            C:\ProgramData\Caracola\test-result.json
+            C:\ProgramData\Caracola\logs\*.log
+          if-no-files-found: ignore

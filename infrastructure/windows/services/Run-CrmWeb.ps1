@@ -9,5 +9,12 @@ foreach ($line in Get-Content -LiteralPath $envFile) {
   if ($parts.Count -eq 2) { [Environment]::SetEnvironmentVariable($parts[0].Trim(), $parts[1], 'Process') }
 }
 Set-Location -LiteralPath (Join-Path $config.installRoot 'current')
-& $config.nodePath 'node_modules\next\dist\bin\next' 'start' '-H' '0.0.0.0' '-p' '3000'
+$standalone = Join-Path $config.installRoot 'current\web\apps\web\server.js'
+if (Test-Path -LiteralPath $standalone) {
+  $env:HOSTNAME = '0.0.0.0'
+  $env:PORT = '3000'
+  & $config.nodePath $standalone
+} else {
+  & $config.nodePath 'node_modules\next\dist\bin\next' 'start' 'apps\web' '-H' '0.0.0.0' '-p' '3000'
+}
 exit $LASTEXITCODE
