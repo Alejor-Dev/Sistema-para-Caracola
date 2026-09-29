@@ -58,7 +58,6 @@ if ($PSCmdlet.ShouldProcess($configPath, 'Aplicar configuración optimizada del 
   [IO.File]::WriteAllText($configPath, ($current.TrimEnd() + $managedConfig), $utf8)
   $hba = @(
     '# Managed by Caracola. PostgreSQL is local-only.'
-    'local   all             all                                     scram-sha-256'
     'host    all             all             127.0.0.1/32            scram-sha-256'
     'host    all             all             ::1/128                 scram-sha-256'
   ) -join [Environment]::NewLine

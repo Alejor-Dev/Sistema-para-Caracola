@@ -8,8 +8,8 @@ Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\Caracola"
 RequestExecutionLevel admin
-SetCompressor /SOLID lzma
-SetCompressorDictSize 32
+SetCompressor lzma
+SetCompressorDictSize 8
 ShowInstDetails show
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Caracola.exe"
@@ -86,7 +86,7 @@ Section "Uninstall"
   SetRegView 64
   SetShellVarContext all
   ${DisableX64FSRedirection}
-  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\current\infrastructure\windows\installer\Uninstall-Crm.ps1" -Confirm:$false'
+  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\current\infrastructure\windows\installer\Uninstall-Crm.ps1" -Unattended'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "No se pudieron desinstalar los servicios. Los datos se conservaron." /SD IDOK

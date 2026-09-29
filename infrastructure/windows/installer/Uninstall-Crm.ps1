@@ -1,8 +1,9 @@
 #requires -Version 5.1
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact='High')]
-param([switch]$RemoveData)
+param([switch]$RemoveData, [switch]$Unattended)
 
 $ErrorActionPreference = 'Stop'
+if ($Unattended) { $ConfirmPreference = 'None' }
 $common = Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)) 'common\Crm.Common.psm1'
 Import-Module $common -Force
 Assert-CrmAdministrator

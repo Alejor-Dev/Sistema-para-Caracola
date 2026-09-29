@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Security
 
 function Assert-CrmAdministrator {
   $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
