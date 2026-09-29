@@ -13,6 +13,28 @@ Además, New-CrmRandomSecret llamaba a RandomNumberGenerator.Fill, que no existe
 en .NET Framework/Windows PowerShell 5.1. La llamada se sustituyó por
 RandomNumberGenerator.Create().GetBytes(). La prueba Test-WindowsRuntime.ps1
 se ejecuta expresamente con powershell.exe, el mismo motor que usa el instalador.
+La prueba limpia también detectó que DPAPI necesitaba cargar explícitamente
+System.Security. El módulo ahora carga esa biblioteca y la prueba de regresión
+guarda y recupera un secreto real antes de compilar.
+
+## Resultado verificado — 29 de septiembre de 2026
+
+- Código probado: `75d995606245054d26ee7f04cab9e2d9a2d7fba8`.
+- Ejecución: https://github.com/Alejor-Dev/Sistema-para-Caracola/actions/runs/36615176019
+- Archivo: `Caracola-Setup-0.2.1.exe`, 461.512.933 bytes. La versión anterior
+  tenía 1.093.760.112 bytes: reducción del 57,8 %.
+- SHA-256: `422a4e095612be210c31e3d3bd8e0b9f428b39d1c683bcacc8e9389186f4c2f7`.
+- Windows Server 2022 limpio, 8 GB de RAM: instalación y prueba funcional
+  completas en 372,2 segundos (6 minutos y 12 segundos). El tiempo depende del
+  equipo; la instalación de PostgreSQL consumió aproximadamente cuatro minutos.
+- Comprobados: servicios activos, web, API a través de la web, base migrada,
+  creación del primer administrador, inicio de sesión y persistencia después
+  de reiniciar servicios.
+- El entorno de prueba ya tenía WebView2. La descarga automática cuando falta
+  no quedó cubierta por esta ejecución. Tampoco se certificó una instalación
+  interactiva en Windows 10/11 ni una sesión visual de la ventana de escritorio.
+- El EXE no tiene firma digital de editor. Su integridad se comprobó contra la
+  huella generada en la compilación.
 
 ## Distribución
 
