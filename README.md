@@ -54,10 +54,10 @@ La Fase 7.5 cubre cambios menores de marca antes del instalador final: reemplaza
 
 ### Descarga directa
 
-[**Descargar instalador de Caracola 0.2.2 para Windows**](https://github.com/Alejor-Dev/Sistema-para-Caracola/releases/download/v0.2.2/Caracola-Setup-0.2.2.exe)
+[**Descargar instalador de Caracola 0.2.3 para Windows**](https://github.com/Alejor-Dev/Sistema-para-Caracola/releases/download/v0.2.3/Caracola-Setup-0.2.3.exe)
 
 El instalador todo-en-uno incluye PostgreSQL 17, la base, los servicios `CrmApi`/`CrmWeb`, los secretos y la aplicación de escritorio. Requiere Windows 10/11 de 64 bits, 4 GB de RAM y 10 GB libres. Ejecutalo, aceptá el permiso de administrador y esperá a que termine; después abrí Caracola y creá el primer usuario administrador.
 
-La versión 0.2.1 fue probada en Windows limpio: instalación, creación del administrador, inicio de sesión y reinicio de servicios. El repositorio es privado, pero el archivo descargado puede pasarse directamente al cliente. La versión 0.2.0 quedó obsoleta.
+La versión 0.2.3 incorpora el flujo robusto de creación de la cuenta supervisora y la instalación aislada de PowerShell. El instalador se valida en Windows limpio antes de publicarse. El repositorio es privado, pero el archivo descargado puede pasarse directamente al cliente. Las versiones 0.2.0, 0.2.1 y 0.2.2 quedaron obsoletas.
 
 Para detalles técnicos y registros de diagnóstico, consultá [la guía del instalador](docs/12-instalador-windows.md) y [Fase 7](docs/11-fase-7.md).
