@@ -4,6 +4,13 @@ Unicode true
 !include "x64.nsh"
 !define PRODUCT_NAME "Caracola"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Caracola"
+Var NativePowerShell
+!macro SelectNativePowerShell
+  StrCpy $NativePowerShell "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
+  ${If} ${FileExists} "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+    StrCpy $NativePowerShell "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+  ${EndIf}
+!macroend
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\Caracola"
@@ -29,7 +36,7 @@ Function .onInit
   ${EndIf}
   SetRegView 64
   SetShellVarContext all
-  ${DisableX64FSRedirection}
+  !insertmacro SelectNativePowerShell
   StrCpy $INSTDIR "$PROGRAMFILES64\Caracola"
   ${If} ${FileExists} "$APPDATA\Caracola\config\production.json"
     MessageBox MB_OK|MB_ICONSTOP "Ya hay una configuracion de Caracola. Se conservan sus datos. Use el procedimiento de actualizacion." /SD IDOK
@@ -60,7 +67,7 @@ Section "Caracola completa"
   File /oname=postgresql.exe "${PGINSTALLER}"
   SetCompress auto
   DetailPrint "Configurando PostgreSQL y Caracola. Espere unos minutos..."
-  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\versions\${PRODUCT_VERSION}\infrastructure\windows\installer\Invoke-CaracolaSetup.ps1" -ReleasePath "$INSTDIR\versions\${PRODUCT_VERSION}" -PostgresInstaller "$PLUGINSDIR\postgresql.exe"'
+  nsExec::ExecToLog '"$NativePowerShell" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\versions\${PRODUCT_VERSION}\infrastructure\windows\installer\Invoke-CaracolaSetup.ps1" -ReleasePath "$INSTDIR\versions\${PRODUCT_VERSION}" -PostgresInstaller "$PLUGINSDIR\postgresql.exe"'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "No se completo la instalacion. El motivo esta en C:\ProgramData\Caracola\install-error.log y setup.log." /SD IDOK
@@ -85,8 +92,8 @@ SectionEnd
 Section "Uninstall"
   SetRegView 64
   SetShellVarContext all
-  ${DisableX64FSRedirection}
-  nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\current\infrastructure\windows\installer\Uninstall-Crm.ps1" -Unattended'
+  !insertmacro SelectNativePowerShell
+  nsExec::ExecToLog '"$NativePowerShell" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\current\infrastructure\windows\installer\Uninstall-Crm.ps1" -Unattended'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "No se pudieron desinstalar los servicios. Los datos se conservaron." /SD IDOK

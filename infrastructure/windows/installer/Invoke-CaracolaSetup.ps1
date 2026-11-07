@@ -19,8 +19,15 @@ New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
 $started = Get-Date
 $transcriptStarted = $false
 try {
-    Start-Transcript -Path (Join-Path $dataRoot 'setup.log') -Force | Out-Null
-    $transcriptStarted = $true
+    try {
+        Start-Transcript -Path (Join-Path $dataRoot 'setup.log') -Force | Out-Null
+        $transcriptStarted = $true
+    } catch {
+        Write-Warning 'No se pudo abrir setup.log. Los registros de progreso y error siguen disponibles.'
+    }
+    if (-not [Environment]::Is64BitProcess) {
+        throw 'El instalador de Caracola requiere Windows PowerShell de 64 bits.'
+    }
     & (Join-Path $PSScriptRoot 'Complete-CrmInstall.ps1') -ReleasePath $ReleasePath -PostgresInstaller $PostgresInstaller -UsePreparedRelease
     [ordered]@{ version = (Get-Content (Join-Path $ReleasePath 'release-manifest.json') -Raw | ConvertFrom-Json).version; completedAt = [DateTime]::UtcNow.ToString('o'); durationSeconds = [math]::Round(((Get-Date) - $started).TotalSeconds, 1) } |
         ConvertTo-Json | Set-Content (Join-Path $dataRoot 'install-success.json') -Encoding UTF8
@@ -30,6 +37,6 @@ try {
     Write-Host "ERROR: $message"
     exit 1
 } finally {
-    if ($transcriptStarted) { Stop-Transcript | Out-Null }
+    if ($transcriptStarted) { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null }
 }
 exit 0
