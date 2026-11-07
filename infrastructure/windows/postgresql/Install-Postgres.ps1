@@ -39,6 +39,17 @@ if (-not $SuperPassword -or $SuperPassword.Length -eq 0) {
   $SuperPassword = New-CrmRandomSecret -Suffix '-Pg!'
 }
 
+# A failed or cancelled installation can leave the dedicated Windows service
+# account behind. PostgreSQL's installer rejects that account when the new
+# generated password does not match the old one, so reset only this Caracola-
+# owned account before validating/installing PostgreSQL.
+$serviceAccount = 'caracola_pg'
+$existingServiceAccount = Get-LocalUser -Name $serviceAccount -ErrorAction SilentlyContinue
+if ($existingServiceAccount) {
+  Set-LocalUser -Name $serviceAccount -Password $SuperPassword -PasswordNeverExpires $true
+  Enable-LocalUser -Name $serviceAccount -ErrorAction SilentlyContinue
+}
+
 $superPlain = $null
 $dataDirectory = Join-Path $DataRoot 'PostgreSQL\data'
 New-Item -ItemType Directory -Path (Split-Path -Parent $dataDirectory) -Force | Out-Null
@@ -48,7 +59,7 @@ $arguments += '--enable-components server,commandlinetools'
 $arguments += '--superaccount postgres'
 $superPlain = Convert-CrmSecureStringToPlain $SuperPassword
 $arguments += "--superpassword $superPlain"
-$arguments += '--serviceaccount caracola_pg'
+$arguments += "--serviceaccount $serviceAccount"
 $arguments += "--servicepassword $superPlain"
 $arguments += "--serverport $ServerPort"
 $arguments += "--servicename $ServiceName"
