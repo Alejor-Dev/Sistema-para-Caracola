@@ -5,6 +5,15 @@ param(
     [Parameter(Mandatory)][string]$PostgresInstaller
 )
 $ErrorActionPreference = 'Stop'
+# The setup runs from an elevated, no-profile PowerShell process.  Some host
+# environments prepend their own module folders (for example Codex runtimes),
+# which can load a second Microsoft.PowerShell.Security module and make
+# Get-AuthenticodeSignature fail before PostgreSQL is installed.
+$systemModulePaths = @(
+    (Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\Modules'),
+    (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules')
+) | Where-Object { Test-Path -LiteralPath $_ }
+$env:PSModulePath = $systemModulePaths -join ';'
 $dataRoot = 'C:\ProgramData\Caracola'
 New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
 $started = Get-Date
